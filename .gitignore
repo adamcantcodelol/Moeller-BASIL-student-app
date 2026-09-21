@@ -1,0 +1,14 @@
+node_modules
+.next
+.open-next
+out
+dist
+coverage
+.wrangler
+.env
+.env.local
+.env*.local
+*.log
+.DS_Store
+tsconfig.tsbuildinfo
+worker-configuration.d.ts
