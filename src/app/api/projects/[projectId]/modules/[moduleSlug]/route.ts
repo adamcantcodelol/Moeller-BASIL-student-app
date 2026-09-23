@@ -8,6 +8,7 @@ import {
 import { completeImportModule } from "@/lib/services/importToolService";
 import { completeInterProModule } from "@/lib/services/interproService";
 import { completeFoldseekModule } from "@/lib/services/foldseekService";
+import { completeActiveSiteModule } from "@/lib/services/evidenceService";
 import { completePdbSetupSchema } from "@/lib/validation/project";
 import { PDB_SETUP_MODULE_ID } from "@/modules/registry";
 
@@ -60,6 +61,9 @@ export async function PATCH(
     }
     if (definition.id === "foldseek") {
       return Response.json(await completeFoldseekModule(db, projectId));
+    }
+    if (definition.id === "active-site-evidence") {
+      return Response.json(await completeActiveSiteModule(db, projectId));
     }
     if (IMPORT_COMPLETE_SLUGS.has(definition.slug)) {
       return Response.json(

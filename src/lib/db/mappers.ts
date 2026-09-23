@@ -8,6 +8,7 @@ import type { Provenance } from "@/types/provenance";
 import { parseJson } from "@/lib/ids";
 import type { InferSelectModel } from "drizzle-orm";
 import {
+  evidence,
   moduleRuns,
   notes,
   projects,
@@ -15,6 +16,7 @@ import {
   scientificJobs,
   structures,
 } from "@/db/schema";
+import type { Evidence, EvidenceResidue, EvidenceStrength } from "@/types/evidence";
 
 export function mapProject(row: InferSelectModel<typeof projects>): Project {
   return {
@@ -114,5 +116,22 @@ export function mapScientificJob(
     finishedAt: row.finishedAt,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
+  };
+}
+
+
+export function mapEvidence(row: InferSelectModel<typeof evidence>): Evidence {
+  return {
+    id: row.id,
+    projectId: row.projectId,
+    type: row.type,
+    description: row.description,
+    sourceResultId: row.sourceResultId,
+    sourceModuleId: row.sourceModuleId ?? null,
+    residues: parseJson<EvidenceResidue[] | null>(row.residuesJson, null),
+    strength: (row.strength as EvidenceStrength | null) ?? null,
+    provenance: parseJson<Provenance | null>(row.provenanceJson, null),
+    isDemo: Boolean(row.isDemo),
+    createdAt: row.createdAt,
   };
 }

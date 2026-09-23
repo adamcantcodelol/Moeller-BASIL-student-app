@@ -13,6 +13,8 @@ export async function createTestDatabase(): Promise<AppDatabase> {
     "drizzle/0003_phase3_jobs_cache.sql",
     "drizzle/0004_phase4_interpro.sql",
     "drizzle/0005_phase4_remaining_modules.sql",
+    "drizzle/0006_phase5_evidence.sql",
+    "drizzle/0007_phase5_active_site.sql",
   ];
 
   for (const relative of migrations) {

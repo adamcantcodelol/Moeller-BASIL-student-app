@@ -7,11 +7,17 @@ import { listNotesForModule } from "@/lib/services/noteService";
 import { listInterProResults } from "@/lib/services/interproService";
 import { listFoldseekResults } from "@/lib/services/foldseekService";
 import { listModuleJobs } from "@/lib/services/importToolService";
+import {
+  collectUniqueResidues,
+  listEvidenceForProject,
+} from "@/lib/services/evidenceService";
+import { generateChimeraXCommands } from "@/lib/chimerax/generateCommands";
 import { getModuleBySlug, PDB_SETUP_MODULE_ID } from "@/modules/registry";
 import { PdbSetupModule } from "@/modules/pdb-setup/PdbSetupModule";
 import { InterProModule } from "@/modules/interpro/InterProModule";
 import { FoldseekModule } from "@/modules/foldseek/FoldseekModule";
 import { ImportToolModule } from "@/modules/import-tool/ImportToolModule";
+import { ActiveSiteEvidenceModule } from "@/modules/active-site-evidence/ActiveSiteEvidenceModule";
 import { IMPORT_MODULE_CONFIG } from "@/modules/import-tool/verificationNotes";
 import { UnavailableModule } from "@/modules/placeholders/UnavailableModule";
 import { getImportWorkflowForTool } from "@/adapters/registry";
@@ -73,6 +79,27 @@ export default async function ModulePage({
         notes={notes}
         normalized={foldseek.latestNormalized}
         jobs={foldseek.jobs}
+        pdbId={overview.structure?.pdbId ?? null}
+      />
+    );
+  } else if (definition.id === "active-site-evidence") {
+    const evidence = await listEvidenceForProject(db, projectId);
+    const residues = collectUniqueResidues(evidence);
+    const chimerax = overview.structure
+      ? generateChimeraXCommands({
+          pdbId: overview.structure.pdbId,
+          residues,
+        })
+      : null;
+    body = (
+      <ActiveSiteEvidenceModule
+        projectId={projectId}
+        module={definition}
+        run={run}
+        notes={notes}
+        evidence={evidence}
+        residues={residues}
+        chimerax={chimerax}
         pdbId={overview.structure?.pdbId ?? null}
       />
     );

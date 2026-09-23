@@ -8,11 +8,14 @@
 
 ## Implemented via structured import
 
-- SPRITE, BLAST, CLEAN, Dali, SwissDock — verified lacking a Worker-friendly free sync path; import UI stores raw exports with provenance.
+- SPRITE, BLAST, CLEAN, Dali, SwissDock
+
+## Evidence synthesis (Phase 5)
+
+- **Active-Site Evidence Synthesis** — student records residues citing earlier modules; ChimeraX + Mol* modes; never invents residues
 
 ## Not implemented yet
 
-- Active-Site Evidence Synthesis
 - Hypothesis Builder
 - ShannonBot Review
 - Reports

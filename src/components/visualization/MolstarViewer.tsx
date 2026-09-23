@@ -2,17 +2,19 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import Script from "next/script";
+import type { EvidenceResidue } from "@/types/evidence";
 
 /**
- * Mol* is loaded from the pinned jsDelivr CDN build (not Turbopack-bundled)
- * because molstar npm imports are unreliable under Next.js 16 Turbopack.
- * Coordinates are loaded live from RCSB files CDN by Mol* — we do not
- * fabricate structures. Active-site highlighting is intentionally omitted.
+ * Mol* is loaded from the pinned jsDelivr CDN build (not Turbopack-bundled).
+ * Coordinates are loaded live from RCSB. Active-site residues must come from
+ * student evidence — never invented.
  */
 
 const MOLSTAR_VERSION = "5.11.0";
 const MOLSTAR_JS = `https://cdn.jsdelivr.net/npm/molstar@${MOLSTAR_VERSION}/build/viewer/molstar.js`;
 const MOLSTAR_CSS = `https://cdn.jsdelivr.net/npm/molstar@${MOLSTAR_VERSION}/build/viewer/molstar.css`;
+
+export type MolstarMode = "protein" | "overlay" | "active-site" | "active-site-overlay";
 
 interface MolstarViewerApi {
   loadPdb: (id: string) => Promise<unknown>;
@@ -52,13 +54,31 @@ function isMolstarAvailable(): boolean {
   return typeof window !== "undefined" && Boolean(window.molstar);
 }
 
+function formatResidues(residues: EvidenceResidue[]): string {
+  if (residues.length === 0) {
+    return "none recorded";
+  }
+  return residues
+    .map(
+      (residue) =>
+        `${residue.chain ? `${residue.chain}:` : ""}${residue.position}${residue.aminoAcid ? residue.aminoAcid : ""}`,
+    )
+    .join(", ");
+}
+
 export function MolstarViewer({
   pdbId,
   enabled,
+  mode = "protein",
+  comparisonPdbId = null,
+  evidenceResidues = [],
 }: {
   pdbId: string;
   /** Only mount after RCSB metadata confirms the entry exists. */
   enabled: boolean;
+  mode?: MolstarMode;
+  comparisonPdbId?: string | null;
+  evidenceResidues?: EvidenceResidue[];
 }) {
   const reactId = useId().replace(/:/g, "");
   const containerId = `molstar-${reactId}`;
@@ -66,6 +86,7 @@ export function MolstarViewer({
   const [scriptReady, setScriptReady] = useState(isMolstarAvailable);
   const [status, setStatus] = useState<string>("Waiting for Mol*…");
   const [error, setError] = useState<string | null>(null);
+  const [uiMode, setUiMode] = useState<MolstarMode>(mode);
 
   useEffect(() => {
     if (enabled) {
@@ -110,8 +131,20 @@ export function MolstarViewer({
         }
         viewerRef.current = viewer;
         await viewer.loadPdb(pdbId);
+        if (
+          (uiMode === "overlay" || uiMode === "active-site-overlay") &&
+          comparisonPdbId
+        ) {
+          await viewer.loadPdb(comparisonPdbId);
+        }
         if (!cancelled) {
-          setStatus(`Displaying ${pdbId} (coordinates from files.rcsb.org).`);
+          const residueNote =
+            uiMode === "active-site" || uiMode === "active-site-overlay"
+              ? ` Evidence residues: ${formatResidues(evidenceResidues)}.`
+              : "";
+          setStatus(
+            `Displaying ${pdbId}${comparisonPdbId && (uiMode === "overlay" || uiMode === "active-site-overlay") ? ` + ${comparisonPdbId}` : ""} (coordinates from files.rcsb.org).${residueNote}`,
+          );
         }
       } catch (loadError) {
         if (!cancelled) {
@@ -132,7 +165,15 @@ export function MolstarViewer({
       viewerRef.current?.dispose?.();
       viewerRef.current = null;
     };
-  }, [containerId, enabled, pdbId, scriptReady]);
+  }, [
+    comparisonPdbId,
+    containerId,
+    enabled,
+    evidenceResidues,
+    pdbId,
+    scriptReady,
+    uiMode,
+  ]);
 
   if (!enabled) {
     return (
@@ -150,10 +191,54 @@ export function MolstarViewer({
     <section className="card">
       <h3>Mol* viewer</h3>
       <p className="muted">
-        Interactive view of <strong>{pdbId}</strong>. Mode A/B/C overlays and
-        active-site highlighting require later evidence modules — they are not
-        invented here.
+        Interactive view of <strong>{pdbId}</strong>. Modes use real RCSB
+        coordinates. Active-site labels come only from recorded evidence.
       </p>
+      <div className="mode-row">
+        <button
+          type="button"
+          className={uiMode === "protein" ? "" : "secondary"}
+          onClick={() => setUiMode("protein")}
+        >
+          Protein
+        </button>
+        <button
+          type="button"
+          className={uiMode === "overlay" ? "" : "secondary"}
+          onClick={() => setUiMode("overlay")}
+          disabled={!comparisonPdbId}
+        >
+          Overlay
+        </button>
+        <button
+          type="button"
+          className={uiMode === "active-site" ? "" : "secondary"}
+          onClick={() => setUiMode("active-site")}
+        >
+          Active site
+        </button>
+        <button
+          type="button"
+          className={uiMode === "active-site-overlay" ? "" : "secondary"}
+          onClick={() => setUiMode("active-site-overlay")}
+          disabled={!comparisonPdbId}
+        >
+          Active-site overlay
+        </button>
+      </div>
+      {!comparisonPdbId ? (
+        <p className="muted">
+          Overlay modes unlock when a comparison PDB ID is provided by a later
+          structural match — they are not invented here.
+        </p>
+      ) : null}
+      {(uiMode === "active-site" || uiMode === "active-site-overlay") && (
+        <p className="muted">
+          Highlight targets from evidence: {formatResidues(evidenceResidues)}.
+          Use the ChimeraX script for precise selections if Mol* selection
+          styling is limited in this CDN viewer build.
+        </p>
+      )}
       <Script
         src={MOLSTAR_JS}
         strategy="afterInteractive"

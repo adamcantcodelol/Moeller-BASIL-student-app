@@ -97,9 +97,9 @@ export const CURRICULUM_MODULES: readonly BasilModuleDefinition[] = [
     description: "Combine evidence from earlier modules for candidate residues.",
     purpose: "Identify residues supported by documented computational evidence.",
     instructions:
-      "This module is registered but not implemented. Active-site residues will never be invented by an LLM.",
+      "Record candidate residues only when supported by earlier module observations. The platform never invents active-site residues. Use ChimeraX commands and Mol* modes to inspect evidence-backed positions.",
     order: 7,
-    implemented: false,
+    implemented: true,
   },
   {
     id: "swissdock",
