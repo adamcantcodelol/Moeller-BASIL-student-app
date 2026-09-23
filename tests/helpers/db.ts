@@ -7,17 +7,16 @@ import type { AppDatabase } from "@/db/client";
 
 export async function createTestDatabase(): Promise<AppDatabase> {
   const client = createClient({ url: ":memory:" });
-  const initSql = readFileSync(
-    path.join(process.cwd(), "drizzle/0001_init.sql"),
-    "utf8",
-  );
-  const seedSql = readFileSync(
-    path.join(process.cwd(), "drizzle/0002_seed_modules.sql"),
-    "utf8",
-  );
+  const migrations = [
+    "drizzle/0001_init.sql",
+    "drizzle/0002_seed_modules.sql",
+    "drizzle/0003_phase3_jobs_cache.sql",
+  ];
 
-  await client.executeMultiple(initSql);
-  await client.executeMultiple(seedSql);
+  for (const relative of migrations) {
+    const sql = readFileSync(path.join(process.cwd(), relative), "utf8");
+    await client.executeMultiple(sql);
+  }
 
   return drizzle(client, { schema });
 }

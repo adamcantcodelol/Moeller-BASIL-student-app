@@ -204,6 +204,59 @@ export const reports = sqliteTable(
   ],
 );
 
+// --- Phase 3 scientific infrastructure ---
+
+export const scientificJobs = sqliteTable(
+  "scientific_jobs",
+  {
+    id: text("id").primaryKey(),
+    moduleRunId: text("module_run_id")
+      .notNull()
+      .references(() => moduleRuns.id, { onDelete: "cascade" }),
+    tool: text("tool").notNull(),
+    status: text("status").notNull(),
+    mode: text("mode").notNull(),
+    parametersJson: text("parameters_json"),
+    error: text("error"),
+    cacheHit: integer("cache_hit", { mode: "boolean" }).notNull().default(false),
+    resultId: text("result_id").references(() => results.id, { onDelete: "set null" }),
+    startedAt: text("started_at"),
+    finishedAt: text("finished_at"),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [
+    index("idx_scientific_jobs_run").on(table.moduleRunId),
+    index("idx_scientific_jobs_tool").on(table.tool),
+    check(
+      "scientific_jobs_status_check",
+      sql`${table.status} IN ('queued', 'running', 'succeeded', 'failed', 'awaiting_import')`,
+    ),
+    check(
+      "scientific_jobs_mode_check",
+      sql`${table.mode} IN ('adapter', 'import')`,
+    ),
+    check("scientific_jobs_cache_hit_check", sql`${table.cacheHit} IN (0, 1)`),
+  ],
+);
+
+export const adapterResponseCache = sqliteTable(
+  "adapter_response_cache",
+  {
+    cacheKey: text("cache_key").primaryKey(),
+    tool: text("tool").notNull(),
+    requestFingerprint: text("request_fingerprint").notNull(),
+    responseJson: text("response_json").notNull(),
+    retrievedAt: text("retrieved_at").notNull(),
+    expiresAt: text("expires_at").notNull(),
+    provenanceJson: text("provenance_json"),
+  },
+  (table) => [
+    index("idx_adapter_cache_tool").on(table.tool),
+    index("idx_adapter_cache_expires").on(table.expiresAt),
+  ],
+);
+
 export const schema = {
   projects,
   structures,
@@ -216,4 +269,6 @@ export const schema = {
   hypothesisVersions,
   aiConversations,
   reports,
+  scientificJobs,
+  adapterResponseCache,
 };
