@@ -97,6 +97,7 @@ export function ImportToolModule({
           moduleSlug={module.slug}
           label={`Mark ${toolName} complete`}
           disabled={!hasSuccess || run?.status === "complete"}
+          alreadyComplete={run?.status === "complete"}
         />
       </section>
     </ModuleLayout>

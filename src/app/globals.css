@@ -190,6 +190,32 @@ button.secondary {
   border: 1px solid var(--navy);
 }
 
+button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+button.btn-confirming {
+  background: var(--navy-soft);
+}
+
+button.btn-success {
+  background: var(--ok);
+  color: #fff;
+  box-shadow: 0 0 0 2px rgba(33, 92, 58, 0.25);
+}
+
+button.btn-success:disabled {
+  opacity: 1;
+  cursor: default;
+}
+
+.action-success {
+  color: var(--ok);
+  font-weight: 600;
+  margin: 0.35rem 0 0;
+}
+
 .error {
   color: var(--danger);
 }

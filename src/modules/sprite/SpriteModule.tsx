@@ -70,6 +70,7 @@ export function SpriteModule({
           moduleSlug="sprite"
           label="Mark SPRITE complete"
           disabled={!hasSuccess || run?.status === "complete"}
+          alreadyComplete={run?.status === "complete"}
         />
       </section>
     </ModuleLayout>

@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useConfirmingAction } from "@/hooks/useConfirmingAction";
+import { ActionStatus } from "@/components/ui/ActionStatus";
 
 export function UniProtForm({
   projectId,
@@ -12,14 +14,12 @@ export function UniProtForm({
 }) {
   const router = useRouter();
   const [accession, setAccession] = useState(currentAccession ?? "");
-  const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
   const [cacheHit, setCacheHit] = useState<boolean | null>(null);
+  const action = useConfirmingAction();
 
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault();
-    setPending(true);
-    setError(null);
+    action.begin();
     setCacheHit(null);
     const response = await fetch(`/api/projects/${projectId}/modules/interpro`, {
       method: "POST",
@@ -30,14 +30,20 @@ export function UniProtForm({
       error?: string;
       cacheHit?: boolean;
     };
-    setPending(false);
     if (!response.ok) {
-      setError(payload.error ?? "InterPro retrieval failed.");
+      action.fail(payload.error ?? "InterPro retrieval failed.");
       return;
     }
     setCacheHit(Boolean(payload.cacheHit));
+    action.flashSuccess();
     router.refresh();
   }
+
+  const label = action.pending
+    ? "Contacting InterPro…"
+    : action.success
+      ? "Retrieved ✓"
+      : "Retrieve from InterPro";
 
   return (
     <form className="card form-stack" onSubmit={(event) => void onSubmit(event)}>
@@ -57,13 +63,22 @@ export function UniProtForm({
           spellCheck={false}
         />
       </label>
-      <button type="submit" disabled={pending || accession.trim() === ""}>
-        {pending ? "Contacting InterPro…" : "Retrieve from InterPro"}
+      <button
+        type="submit"
+        className={action.buttonClassName}
+        disabled={action.pending || accession.trim() === ""}
+        aria-live="polite"
+      >
+        {label}
       </button>
+      <ActionStatus
+        success={action.success}
+        successLabel="InterPro annotations retrieved."
+        error={action.error}
+      />
       {cacheHit === true ? (
         <p className="muted">Served from the legitimate response cache.</p>
       ) : null}
-      {error ? <p className="error">{error}</p> : null}
     </form>
   );
 }

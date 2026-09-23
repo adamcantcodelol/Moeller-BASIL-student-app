@@ -1,20 +1,24 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useConfirmingAction } from "@/hooks/useConfirmingAction";
+import { ActionStatus } from "@/components/ui/ActionStatus";
 
 export function CompleteInterProButton({
   projectId,
   disabled,
+  alreadyComplete = false,
 }: {
   projectId: string;
   disabled: boolean;
+  alreadyComplete?: boolean;
 }) {
   const router = useRouter();
-  const [error, setError] = useState<string | null>(null);
+  const action = useConfirmingAction({ holdSuccess: alreadyComplete });
 
   async function complete() {
-    setError(null);
+    if (alreadyComplete || action.pending) return;
+    action.begin();
     const response = await fetch(`/api/projects/${projectId}/modules/interpro`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -22,18 +26,36 @@ export function CompleteInterProButton({
     });
     const payload = (await response.json()) as { error?: string };
     if (!response.ok) {
-      setError(payload.error ?? "Could not complete InterPro.");
+      action.fail(payload.error ?? "Could not complete InterPro.");
       return;
     }
+    action.flashSuccess();
     router.refresh();
   }
 
+  const showComplete = alreadyComplete || action.success;
+  const buttonLabel = showComplete
+    ? "Complete ✓"
+    : action.pending
+      ? "Marking complete…"
+      : "Mark InterPro complete";
+
   return (
     <div>
-      <button type="button" disabled={disabled} onClick={() => void complete()}>
-        Mark InterPro complete
+      <button
+        type="button"
+        className={action.buttonClassName}
+        disabled={disabled || action.pending}
+        onClick={() => void complete()}
+        aria-live="polite"
+      >
+        {buttonLabel}
       </button>
-      {error ? <p className="error">{error}</p> : null}
+      <ActionStatus
+        success={showComplete}
+        successLabel="InterPro marked complete."
+        error={action.error}
+      />
     </div>
   );
 }

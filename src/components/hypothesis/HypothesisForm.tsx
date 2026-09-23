@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { HypothesisReview } from "@/types/hypothesis";
+import { useConfirmingAction } from "@/hooks/useConfirmingAction";
+import { ActionStatus } from "@/components/ui/ActionStatus";
 
 export function HypothesisForm({
   projectId,
@@ -17,13 +19,11 @@ export function HypothesisForm({
   const [text, setText] = useState(initialText);
   const [reason, setReason] = useState("");
   const [review, setReview] = useState<HypothesisReview | null>(initialReview);
-  const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
+  const action = useConfirmingAction();
 
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault();
-    setPending(true);
-    setError(null);
+    action.begin();
     const response = await fetch(`/api/projects/${projectId}/hypothesis`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -36,15 +36,21 @@ export function HypothesisForm({
       error?: string;
       review?: HypothesisReview;
     };
-    setPending(false);
     if (!response.ok) {
-      setError(payload.error ?? "Could not save hypothesis.");
+      action.fail(payload.error ?? "Could not save hypothesis.");
       return;
     }
     setReview(payload.review ?? null);
     setReason("");
+    action.flashSuccess();
     router.refresh();
   }
+
+  const label = action.pending
+    ? "Saving…"
+    : action.success
+      ? "Saved ✓"
+      : "Save hypothesis";
 
   return (
     <form className="card form-stack" onSubmit={(event) => void onSubmit(event)}>
@@ -58,7 +64,10 @@ export function HypothesisForm({
         <textarea
           rows={6}
           value={text}
-          onChange={(event) => setText(event.target.value)}
+          onChange={(event) => {
+            setText(event.target.value);
+            if (action.success) action.setError(null);
+          }}
           placeholder="State a testable claim grounded in your module evidence…"
           required
         />
@@ -71,10 +80,19 @@ export function HypothesisForm({
           placeholder="What evidence made you revise this?"
         />
       </label>
-      <button type="submit" disabled={pending}>
-        {pending ? "Saving…" : "Save hypothesis"}
+      <button
+        type="submit"
+        className={action.buttonClassName}
+        disabled={action.pending}
+        aria-live="polite"
+      >
+        {label}
       </button>
-      {error ? <p className="error">{error}</p> : null}
+      <ActionStatus
+        success={action.success}
+        successLabel="Hypothesis saved."
+        error={action.error}
+      />
       {review ? (
         <div>
           <h4>Review checks</h4>

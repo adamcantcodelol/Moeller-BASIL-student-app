@@ -62,6 +62,7 @@ export function InterProModule({
         <CompleteInterProButton
           projectId={projectId}
           disabled={!hasSuccess || run?.status === "complete"}
+          alreadyComplete={run?.status === "complete"}
         />
       </section>
     </ModuleLayout>

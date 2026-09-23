@@ -88,6 +88,7 @@ export function HypothesisBuilderModule({
           moduleSlug="hypothesis-builder"
           label="Mark Hypothesis Builder complete"
           disabled={!hypothesis || run?.status === "complete"}
+          alreadyComplete={run?.status === "complete"}
         />
       </section>
     </ModuleLayout>

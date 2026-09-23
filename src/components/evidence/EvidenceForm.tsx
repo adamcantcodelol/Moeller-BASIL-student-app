@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useConfirmingAction } from "@/hooks/useConfirmingAction";
+import { ActionStatus } from "@/components/ui/ActionStatus";
 
 const SOURCE_OPTIONS = [
   { id: "pdb-setup", label: "00 Protein / PDB Setup" },
@@ -23,13 +25,11 @@ export function EvidenceForm({ projectId }: { projectId: string }) {
   const [position, setPosition] = useState("");
   const [aminoAcid, setAminoAcid] = useState("");
   const [strength, setStrength] = useState("supporting");
-  const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
+  const action = useConfirmingAction();
 
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault();
-    setPending(true);
-    setError(null);
+    action.begin();
     const pos = Number(position);
     const response = await fetch(`/api/projects/${projectId}/evidence`, {
       method: "POST",
@@ -49,16 +49,22 @@ export function EvidenceForm({ projectId }: { projectId: string }) {
       }),
     });
     const payload = (await response.json()) as { error?: string };
-    setPending(false);
     if (!response.ok) {
-      setError(payload.error ?? "Could not save evidence.");
+      action.fail(payload.error ?? "Could not save evidence.");
       return;
     }
     setDescription("");
     setPosition("");
     setAminoAcid("");
+    action.flashSuccess();
     router.refresh();
   }
+
+  const label = action.pending
+    ? "Saving…"
+    : action.success
+      ? "Saved ✓"
+      : "Save evidence";
 
   return (
     <form className="card form-stack" onSubmit={(event) => void onSubmit(event)}>
@@ -132,10 +138,19 @@ export function EvidenceForm({ projectId }: { projectId: string }) {
           <option value="conflicting">conflicting</option>
         </select>
       </label>
-      <button type="submit" disabled={pending}>
-        {pending ? "Saving…" : "Save evidence"}
+      <button
+        type="submit"
+        className={action.buttonClassName}
+        disabled={action.pending}
+        aria-live="polite"
+      >
+        {label}
       </button>
-      {error ? <p className="error">{error}</p> : null}
+      <ActionStatus
+        success={action.success}
+        successLabel="Evidence saved."
+        error={action.error}
+      />
     </form>
   );
 }

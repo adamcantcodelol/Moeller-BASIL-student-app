@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useConfirmingAction } from "@/hooks/useConfirmingAction";
+import { ActionStatus } from "@/components/ui/ActionStatus";
 import type { ImportFormat } from "@/types/importWorkflow";
 
 const FORMATS: ImportFormat[] = ["json", "tsv", "text"];
@@ -11,14 +13,12 @@ export function InterProImportForm({ projectId }: { projectId: string }) {
   const [format, setFormat] = useState<ImportFormat>("json");
   const [content, setContent] = useState("");
   const [notes, setNotes] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
+  const action = useConfirmingAction();
   const [okMessage, setOkMessage] = useState<string | null>(null);
 
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault();
-    setPending(true);
-    setError(null);
+    action.begin();
     setOkMessage(null);
     const response = await fetch(
       `/api/projects/${projectId}/modules/interpro/import`,
@@ -29,11 +29,11 @@ export function InterProImportForm({ projectId }: { projectId: string }) {
       },
     );
     const payload = (await response.json()) as { error?: string };
-    setPending(false);
     if (!response.ok) {
-      setError(payload.error ?? "Import failed.");
+      action.fail(payload.error ?? "Import failed.");
       return;
     }
+    action.flashSuccess();
     setOkMessage(
       "Imported raw InterPro output with provenance source=import. Normalized science is not invented from imports.",
     );
@@ -87,11 +87,20 @@ export function InterProImportForm({ projectId }: { projectId: string }) {
           placeholder="How this export was obtained"
         />
       </label>
-      <button type="submit" disabled={pending || content.trim() === ""}>
-        {pending ? "Importing…" : "Import raw results"}
+      <button
+        type="submit"
+        className={action.buttonClassName}
+        disabled={action.pending || content.trim() === ""}
+        aria-live="polite"
+      >
+        {action.pending ? "Importing…" : action.success ? "Imported ✓" : "Import raw results"}
       </button>
+      <ActionStatus
+        success={action.success}
+        successLabel="Import saved."
+        error={action.error}
+      />
       {okMessage ? <p className="muted">{okMessage}</p> : null}
-      {error ? <p className="error">{error}</p> : null}
     </form>
   );
 }

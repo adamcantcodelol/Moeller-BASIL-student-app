@@ -1,20 +1,24 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useConfirmingAction } from "@/hooks/useConfirmingAction";
+import { ActionStatus } from "@/components/ui/ActionStatus";
 
 export function CompletePdbSetupButton({
   projectId,
   disabled,
+  alreadyComplete = false,
 }: {
   projectId: string;
   disabled: boolean;
+  alreadyComplete?: boolean;
 }) {
   const router = useRouter();
-  const [error, setError] = useState<string | null>(null);
+  const action = useConfirmingAction({ holdSuccess: alreadyComplete });
 
   async function complete() {
-    setError(null);
+    if (alreadyComplete || action.pending) return;
+    action.begin();
     const response = await fetch(
       `/api/projects/${projectId}/modules/pdb-setup`,
       {
@@ -25,18 +29,36 @@ export function CompletePdbSetupButton({
     );
     const payload = (await response.json()) as { error?: string };
     if (!response.ok) {
-      setError(payload.error ?? "Could not complete PDB Setup.");
+      action.fail(payload.error ?? "Could not complete PDB Setup.");
       return;
     }
+    action.flashSuccess();
     router.refresh();
   }
 
+  const showComplete = alreadyComplete || action.success;
+  const buttonLabel = showComplete
+    ? "Complete ✓"
+    : action.pending
+      ? "Marking complete…"
+      : "Mark PDB Setup complete";
+
   return (
     <div>
-      <button type="button" disabled={disabled} onClick={() => void complete()}>
-        Mark PDB Setup complete
+      <button
+        type="button"
+        className={action.buttonClassName}
+        disabled={disabled || action.pending}
+        onClick={() => void complete()}
+        aria-live="polite"
+      >
+        {buttonLabel}
       </button>
-      {error ? <p className="error">{error}</p> : null}
+      <ActionStatus
+        success={showComplete}
+        successLabel="PDB Setup marked complete."
+        error={action.error}
+      />
     </div>
   );
 }

@@ -1,24 +1,29 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useConfirmingAction } from "@/hooks/useConfirmingAction";
+import { ActionStatus } from "@/components/ui/ActionStatus";
 
 export function CompleteImportModuleButton({
   projectId,
   moduleSlug,
   label,
   disabled,
+  alreadyComplete = false,
 }: {
   projectId: string;
   moduleSlug: string;
   label: string;
   disabled: boolean;
+  /** When the module run is already complete — keep green confirmation. */
+  alreadyComplete?: boolean;
 }) {
   const router = useRouter();
-  const [error, setError] = useState<string | null>(null);
+  const action = useConfirmingAction({ holdSuccess: alreadyComplete });
 
   async function complete() {
-    setError(null);
+    if (alreadyComplete || action.pending) return;
+    action.begin();
     const response = await fetch(
       `/api/projects/${projectId}/modules/${moduleSlug}`,
       {
@@ -29,18 +34,36 @@ export function CompleteImportModuleButton({
     );
     const payload = (await response.json()) as { error?: string };
     if (!response.ok) {
-      setError(payload.error ?? "Could not complete module.");
+      action.fail(payload.error ?? "Could not complete module.");
       return;
     }
+    action.flashSuccess();
     router.refresh();
   }
 
+  const showComplete = alreadyComplete || action.success;
+  const buttonLabel = showComplete
+    ? "Complete ✓"
+    : action.pending
+      ? "Marking complete…"
+      : label;
+
   return (
     <div>
-      <button type="button" disabled={disabled} onClick={() => void complete()}>
-        {label}
+      <button
+        type="button"
+        className={action.buttonClassName}
+        disabled={disabled || action.pending}
+        onClick={() => void complete()}
+        aria-live="polite"
+      >
+        {buttonLabel}
       </button>
-      {error ? <p className="error">{error}</p> : null}
+      <ActionStatus
+        success={showComplete}
+        successLabel="Module marked complete."
+        error={action.error}
+      />
     </div>
   );
 }

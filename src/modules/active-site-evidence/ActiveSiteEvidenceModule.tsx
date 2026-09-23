@@ -76,6 +76,7 @@ export function ActiveSiteEvidenceModule({
           moduleSlug="active-site-evidence"
           label="Mark Active-Site Evidence complete"
           disabled={evidence.length === 0 || run?.status === "complete"}
+          alreadyComplete={run?.status === "complete"}
         />
       </section>
     </ModuleLayout>

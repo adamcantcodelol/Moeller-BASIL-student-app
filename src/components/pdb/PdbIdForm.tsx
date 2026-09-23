@@ -1,29 +1,34 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useConfirmingAction } from "@/hooks/useConfirmingAction";
+import { ActionStatus } from "@/components/ui/ActionStatus";
 
 export function PdbIdForm({ projectId, currentPdbId }: { projectId: string; currentPdbId?: string }) {
   const router = useRouter();
-  const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
+  const action = useConfirmingAction();
 
   async function onSubmit(formData: FormData) {
-    setPending(true);
-    setError(null);
+    action.begin();
     const response = await fetch(`/api/projects/${projectId}/structure`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ pdbId: formData.get("pdbId") }),
     });
     const payload = (await response.json()) as { error?: string };
-    setPending(false);
     if (!response.ok) {
-      setError(payload.error ?? "Could not save the PDB identifier.");
+      action.fail(payload.error ?? "Could not save the PDB identifier.");
       return;
     }
+    action.flashSuccess();
     router.refresh();
   }
+
+  const label = action.pending
+    ? "Saving…"
+    : action.success
+      ? "Saved ✓"
+      : "Save PDB ID";
 
   return (
     <form
@@ -43,10 +48,19 @@ export function PdbIdForm({ projectId, currentPdbId }: { projectId: string; curr
           placeholder="4HHB"
         />
       </label>
-      {error ? <p className="error">{error}</p> : null}
-      <button type="submit" disabled={pending}>
-        {pending ? "Saving…" : "Save PDB ID"}
+      <button
+        type="submit"
+        className={action.buttonClassName}
+        disabled={action.pending}
+        aria-live="polite"
+      >
+        {label}
       </button>
+      <ActionStatus
+        success={action.success}
+        successLabel="PDB identifier saved."
+        error={action.error}
+      />
     </form>
   );
 }

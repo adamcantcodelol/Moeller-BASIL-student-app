@@ -69,6 +69,7 @@ export function FoldseekModule({
           moduleSlug="foldseek"
           label="Mark Foldseek complete"
           disabled={!hasSuccess || run?.status === "complete"}
+          alreadyComplete={run?.status === "complete"}
         />
       </section>
     </ModuleLayout>

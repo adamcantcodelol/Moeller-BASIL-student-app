@@ -102,6 +102,7 @@ export function PdbSetupModule({
         <CompletePdbSetupButton
           projectId={projectId}
           disabled={!rcsbReady}
+          alreadyComplete={run?.status === "complete"}
         />
       </section>
     </ModuleLayout>

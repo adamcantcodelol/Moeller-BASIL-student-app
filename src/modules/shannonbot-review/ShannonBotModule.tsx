@@ -56,6 +56,7 @@ export function ShannonBotModule({
           moduleSlug="shannonbot-review"
           label="Mark ShannonBot Review complete"
           disabled={messages.length < 2 || run?.status === "complete"}
+          alreadyComplete={run?.status === "complete"}
         />
       </section>
     </ModuleLayout>
