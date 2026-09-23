@@ -3,6 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 import Script from "next/script";
 import type { EvidenceResidue } from "@/types/evidence";
+import {
+  formatEvidenceResidues,
+  residuesToStructureElements,
+} from "@/lib/molstar/activeSiteOverlay";
 
 /**
  * Mol* is loaded from the pinned jsDelivr CDN build (not Turbopack-bundled).
@@ -13,8 +17,8 @@ import type { EvidenceResidue } from "@/types/evidence";
  * - Create Viewer once per enabled+scriptReady lifecycle.
  * - Dispose only on effect cleanup (unmount / disable).
  * - Never put unstable object/array props in init or load deps.
- * - evidenceResidues is display-only; default is a stable empty constant.
- * - Mode toggles that do not change loaded PDBs only update status text.
+ * - evidenceResidues default is a stable empty constant.
+ * - Mode / residue changes update structureInteractivity without remounting.
  */
 
 const MOLSTAR_VERSION = "5.11.0";
@@ -24,10 +28,27 @@ const MOLSTAR_CSS = `https://cdn.jsdelivr.net/npm/molstar@${MOLSTAR_VERSION}/bui
 /** Stable default so missing prop does not reinvent [] every render. */
 const EMPTY_RESIDUES: EvidenceResidue[] = [];
 
-export type MolstarMode = "protein" | "overlay" | "active-site" | "active-site-overlay";
+export type MolstarMode =
+  | "protein"
+  | "overlay"
+  | "active-site"
+  | "active-site-overlay";
+
+interface StructureInteractivityOptions {
+  elements?: {
+    items: Array<{ auth_asym_id?: string; auth_seq_id: number }>;
+  };
+  action:
+    | "highlight"
+    | "select"
+    | "focus"
+    | Array<"highlight" | "select" | "focus">;
+  applyGranularity?: boolean;
+}
 
 interface MolstarViewerApi {
   loadPdb: (id: string) => Promise<unknown>;
+  structureInteractivity?: (options: StructureInteractivityOptions) => void;
   plugin?: { clear?: () => void; dispose?: () => void };
   dispose?: () => void;
 }
@@ -80,24 +101,47 @@ function disposeViewer(viewer: MolstarViewerApi | null) {
   }
 }
 
-function formatResidues(residues: EvidenceResidue[]): string {
-  if (residues.length === 0) {
-    return "none recorded";
-  }
-  return residues
-    .map(
-      (residue) =>
-        `${residue.chain ? `${residue.chain}:` : ""}${residue.position}${residue.aminoAcid ? residue.aminoAcid : ""}`,
-    )
-    .join(", ");
-}
-
 function needsComparison(mode: MolstarMode): boolean {
   return mode === "overlay" || mode === "active-site-overlay";
 }
 
-function needsActiveSiteNote(mode: MolstarMode): boolean {
+function needsActiveSite(mode: MolstarMode): boolean {
   return mode === "active-site" || mode === "active-site-overlay";
+}
+
+function resolveUiMode(
+  mode: MolstarMode,
+  comparisonPdbId: string | null,
+): MolstarMode {
+  if (!comparisonPdbId && needsComparison(mode)) {
+    return mode === "active-site-overlay" ? "active-site" : "protein";
+  }
+  return mode;
+}
+
+function clearStructureInteractivity(viewer: MolstarViewerApi) {
+  viewer.structureInteractivity?.({ action: "select" });
+  viewer.structureInteractivity?.({ action: "highlight" });
+}
+
+function applyActiveSiteOverlay(
+  viewer: MolstarViewerApi,
+  residues: EvidenceResidue[],
+): boolean {
+  if (!viewer.structureInteractivity) {
+    return false;
+  }
+  clearStructureInteractivity(viewer);
+  if (residues.length === 0) {
+    return false;
+  }
+  const items = residuesToStructureElements(residues);
+  viewer.structureInteractivity({
+    elements: { items },
+    action: ["select", "focus"],
+    applyGranularity: true,
+  });
+  return true;
 }
 
 function statusMessage(
@@ -105,13 +149,20 @@ function statusMessage(
   uiMode: MolstarMode,
   comparisonPdbId: string | null,
   evidenceResidues: EvidenceResidue[],
+  overlayApplied: boolean,
 ): string {
-  const residueNote = needsActiveSiteNote(uiMode)
-    ? ` Evidence residues: ${formatResidues(evidenceResidues)}.`
-    : "";
   const overlayNote =
     needsComparison(uiMode) && comparisonPdbId ? ` + ${comparisonPdbId}` : "";
-  return `Displaying ${pdbId}${overlayNote} (coordinates from files.rcsb.org).${residueNote}`;
+  if (needsActiveSite(uiMode)) {
+    if (evidenceResidues.length === 0) {
+      return `Displaying ${pdbId}${overlayNote}. No active-site evidence residues recorded — nothing to highlight.`;
+    }
+    if (overlayApplied) {
+      return `Displaying ${pdbId}${overlayNote}. Active-site focus: ${formatEvidenceResidues(evidenceResidues)}.`;
+    }
+    return `Displaying ${pdbId}${overlayNote}. Evidence residues listed (${formatEvidenceResidues(evidenceResidues)}) but Mol* interactivity is unavailable in this build.`;
+  }
+  return `Displaying ${pdbId}${overlayNote} (coordinates from files.rcsb.org).`;
 }
 
 export function MolstarViewer({
@@ -133,10 +184,14 @@ export function MolstarViewer({
   const loadedKeyRef = useRef<string | null>(null);
   const [scriptReady, setScriptReady] = useState(isMolstarAvailable);
   const [viewerGeneration, setViewerGeneration] = useState(0);
+  const [loadedStructureKey, setLoadedStructureKey] = useState<string | null>(
+    null,
+  );
   const [status, setStatus] = useState<string>("Waiting for Mol*…");
   const [error, setError] = useState<string | null>(null);
-  const [uiMode, setUiMode] = useState<MolstarMode>(mode);
+  const [selectedMode, setSelectedMode] = useState<MolstarMode>(mode);
 
+  const uiMode = resolveUiMode(selectedMode, comparisonPdbId);
   const loadComparison = needsComparison(uiMode) ? comparisonPdbId : null;
   const structureKey = `${pdbId}::${loadComparison ?? ""}`;
   // Primitive signature so a fresh [] / mapped array from parents cannot retrigger work.
@@ -188,6 +243,7 @@ export function MolstarViewer({
         }
         viewerRef.current = viewer;
         loadedKeyRef.current = null;
+        setLoadedStructureKey(null);
         setViewerGeneration((value) => value + 1);
       } catch (createError) {
         if (!cancelled) {
@@ -247,12 +303,14 @@ export function MolstarViewer({
           return;
         }
         loadedKeyRef.current = structureKey;
+        setLoadedStructureKey(structureKey);
         setStatus(
-          statusMessage(pdbId, uiMode, comparisonPdbId, evidenceResidues),
+          `Loaded ${pdbId}${loadComparison ? ` + ${loadComparison}` : ""}.`,
         );
       } catch (loadError) {
         if (!cancelled) {
           loadedKeyRef.current = null;
+          setLoadedStructureKey(null);
           setError(
             loadError instanceof Error
               ? loadError.message
@@ -268,24 +326,49 @@ export function MolstarViewer({
     return () => {
       cancelled = true;
     };
-    // evidenceResidues / uiMode labels updated in a separate effect.
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- structureKey captures load inputs
-  }, [enabled, scriptReady, pdbId, structureKey, viewerGeneration, loadComparison]);
+  }, [
+    enabled,
+    scriptReady,
+    pdbId,
+    structureKey,
+    viewerGeneration,
+    loadComparison,
+  ]);
 
-  // Status text only — never dispose/recreate the viewer for residue/mode labels.
+  // Mode / residue overlay — never dispose/recreate the viewer.
   useEffect(() => {
-    if (!enabled || !pdbId || loadedKeyRef.current === null) {
+    const viewer = viewerRef.current;
+    if (
+      !enabled ||
+      !pdbId ||
+      !viewer ||
+      loadedStructureKey === null ||
+      loadedStructureKey !== structureKey
+    ) {
       return;
     }
-    if (loadedKeyRef.current !== structureKey) {
-      return;
+
+    let overlayApplied = false;
+    if (needsActiveSite(uiMode)) {
+      overlayApplied = applyActiveSiteOverlay(viewer, evidenceResidues);
+    } else {
+      clearStructureInteractivity(viewer);
     }
-    setStatus(statusMessage(pdbId, uiMode, comparisonPdbId, evidenceResidues));
+    setStatus(
+      statusMessage(
+        pdbId,
+        uiMode,
+        comparisonPdbId,
+        evidenceResidues,
+        overlayApplied,
+      ),
+    );
     // residueSignature stands in for evidenceResidues identity.
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- display-only sync
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- overlay sync without remount
   }, [
     comparisonPdbId,
     enabled,
+    loadedStructureKey,
     pdbId,
     residueSignature,
     structureKey,
@@ -305,58 +388,76 @@ export function MolstarViewer({
     );
   }
 
+  const showOverlayModes = Boolean(comparisonPdbId);
+  const activeSiteEmpty =
+    needsActiveSite(uiMode) && evidenceResidues.length === 0;
+
   return (
     <section className="card">
       <h3>Mol* viewer</h3>
       <p className="muted">
         Interactive view of <strong>{pdbId}</strong>. Modes use real RCSB
-        coordinates. Active-site labels come only from recorded evidence.
+        coordinates. Active-site highlights come only from recorded evidence.
       </p>
       <div className="mode-row">
         <button
           type="button"
           className={uiMode === "protein" ? "" : "secondary"}
-          onClick={() => setUiMode("protein")}
+          onClick={() => setSelectedMode("protein")}
         >
           Protein
         </button>
-        <button
-          type="button"
-          className={uiMode === "overlay" ? "" : "secondary"}
-          onClick={() => setUiMode("overlay")}
-          disabled={!comparisonPdbId}
-        >
-          Overlay
-        </button>
+        {showOverlayModes ? (
+          <button
+            type="button"
+            className={uiMode === "overlay" ? "" : "secondary"}
+            onClick={() => setSelectedMode("overlay")}
+          >
+            Overlay
+          </button>
+        ) : null}
         <button
           type="button"
           className={uiMode === "active-site" ? "" : "secondary"}
-          onClick={() => setUiMode("active-site")}
+          onClick={() => setSelectedMode("active-site")}
         >
           Active site
         </button>
-        <button
-          type="button"
-          className={uiMode === "active-site-overlay" ? "" : "secondary"}
-          onClick={() => setUiMode("active-site-overlay")}
-          disabled={!comparisonPdbId}
-        >
-          Active-site overlay
-        </button>
+        {showOverlayModes ? (
+          <button
+            type="button"
+            className={uiMode === "active-site-overlay" ? "" : "secondary"}
+            onClick={() => setSelectedMode("active-site-overlay")}
+          >
+            Active-site overlay
+          </button>
+        ) : null}
       </div>
-      {!comparisonPdbId ? (
+      {!showOverlayModes ? (
         <p className="muted">
-          Overlay modes unlock when a comparison PDB ID is provided by a later
-          structural match — they are not invented here.
+          Overlay modes stay hidden until a comparison PDB ID is available from
+          a structural match (for example Foldseek). They are not invented here.
         </p>
-      ) : null}
-      {(uiMode === "active-site" || uiMode === "active-site-overlay") && (
+      ) : (
         <p className="muted">
-          Highlight targets from evidence: {formatResidues(evidenceResidues)}.
-          Use the ChimeraX script for precise selections if Mol* selection
-          styling is limited in this CDN viewer build.
+          Comparison structure: <strong>{comparisonPdbId}</strong> (from stored
+          structural match evidence).
         </p>
       )}
+      {activeSiteEmpty ? (
+        <p className="error" role="status">
+          No active-site residues recorded yet. Add evidence residues in
+          Active-Site Evidence Synthesis — the viewer will not invent or
+          highlight positions.
+        </p>
+      ) : null}
+      {needsActiveSite(uiMode) && evidenceResidues.length > 0 ? (
+        <p className="muted">
+          Highlighting evidence residues:{" "}
+          {formatEvidenceResidues(evidenceResidues)}. Selection is focused in
+          the viewport; ChimeraX script remains available for desktop analysis.
+        </p>
+      ) : null}
       <Script
         src={MOLSTAR_JS}
         strategy="afterInteractive"

@@ -12,6 +12,8 @@ import {
   listEvidenceForProject,
 } from "@/lib/services/evidenceService";
 import { generateChimeraXCommands } from "@/lib/chimerax/generateCommands";
+import { pickComparisonPdbId } from "@/lib/molstar/activeSiteOverlay";
+import { extractClassicPdbId } from "@/lib/validation/pdbId";
 import { getHypothesisForProject } from "@/lib/services/hypothesisService";
 import { getShannonBotConversation } from "@/lib/services/shannonBotService";
 import { listReports } from "@/lib/services/reportService";
@@ -91,9 +93,23 @@ export default async function ModulePage({
   } else if (definition.id === "active-site-evidence") {
     const evidence = await listEvidenceForProject(db, projectId);
     const residues = collectUniqueResidues(evidence);
+    let comparisonPdbId: string | null = null;
+    try {
+      const foldseek = await listFoldseekResults(db, projectId);
+      const candidates = (foldseek.latestNormalized?.hits ?? [])
+        .map((hit) => extractClassicPdbId(hit.target))
+        .filter((id): id is string => Boolean(id));
+      comparisonPdbId = pickComparisonPdbId(
+        overview.structure?.pdbId,
+        candidates,
+      );
+    } catch {
+      comparisonPdbId = null;
+    }
     const chimerax = overview.structure
       ? generateChimeraXCommands({
           pdbId: overview.structure.pdbId,
+          comparisonPdbId,
           residues,
         })
       : null;
@@ -107,6 +123,7 @@ export default async function ModulePage({
         residues={residues}
         chimerax={chimerax}
         pdbId={overview.structure?.pdbId ?? null}
+        comparisonPdbId={comparisonPdbId}
       />
     );
   } else if (definition.id === "hypothesis-builder") {

@@ -25,3 +25,17 @@ export function validatePdbId(input: string): PdbIdValidationResult {
 
   return { ok: true, pdbId };
 }
+
+/**
+ * Pull a classic 4-char PDB ID from Foldseek-style targets (e.g. "1abc_A", "1ABC-A").
+ * Returns null when the leading token is not a valid classic PDB ID — never invents one.
+ */
+export function extractClassicPdbId(raw: string): string | null {
+  if (typeof raw !== "string" || raw.trim() === "") {
+    return null;
+  }
+  const head = raw.trim().split(/[_\-.\s/]/)[0] ?? "";
+  const result = validatePdbId(head);
+  return result.ok ? result.pdbId : null;
+}
+

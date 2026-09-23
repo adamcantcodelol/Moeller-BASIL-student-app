@@ -20,6 +20,7 @@ export function ActiveSiteEvidenceModule({
   residues,
   chimerax,
   pdbId,
+  comparisonPdbId = null,
 }: {
   projectId: string;
   module: BasilModuleDefinition;
@@ -29,6 +30,7 @@ export function ActiveSiteEvidenceModule({
   residues: EvidenceResidue[];
   chimerax: ChimeraXCommandSet | null;
   pdbId: string | null;
+  comparisonPdbId?: string | null;
 }) {
   const rcsbReady = Boolean(pdbId);
 
@@ -49,6 +51,7 @@ export function ActiveSiteEvidenceModule({
         pdbId={pdbId ?? ""}
         enabled={Boolean(rcsbReady && pdbId)}
         mode="active-site"
+        comparisonPdbId={comparisonPdbId}
         evidenceResidues={residues}
       />
       <section className="card">

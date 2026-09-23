@@ -7,6 +7,9 @@ import {
 } from "@/lib/services/evidenceService";
 import { generateChimeraXCommands } from "@/lib/chimerax/generateCommands";
 import { getStructureByProjectId } from "@/lib/db/queries/structures";
+import { listFoldseekResults } from "@/lib/services/foldseekService";
+import { pickComparisonPdbId } from "@/lib/molstar/activeSiteOverlay";
+import { extractClassicPdbId } from "@/lib/validation/pdbId";
 
 export const dynamic = "force-dynamic";
 
@@ -20,13 +23,24 @@ export async function GET(
     const items = await listEvidenceForProject(db, projectId);
     const structure = await getStructureByProjectId(db, projectId);
     const residues = collectUniqueResidues(items);
+    let comparisonPdbId: string | null = null;
+    try {
+      const foldseek = await listFoldseekResults(db, projectId);
+      const candidates = (foldseek.latestNormalized?.hits ?? [])
+        .map((hit) => extractClassicPdbId(hit.target))
+        .filter((id): id is string => Boolean(id));
+      comparisonPdbId = pickComparisonPdbId(structure?.pdbId, candidates);
+    } catch {
+      comparisonPdbId = null;
+    }
     const chimerax = structure
       ? generateChimeraXCommands({
           pdbId: structure.pdbId,
+          comparisonPdbId,
           residues,
         })
       : null;
-    return Response.json({ evidence: items, residues, chimerax });
+    return Response.json({ evidence: items, residues, comparisonPdbId, chimerax });
   } catch (error) {
     return handleServiceError(error);
   }
