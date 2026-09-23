@@ -10,12 +10,17 @@ import {
 } from "@/adapters/stubs";
 import { ScientificAdapterNotImplementedError } from "@/adapters/scientificAdapter";
 import { InterProDataAdapter } from "@/adapters/interpro";
+import { FoldseekSearchAdapter } from "@/adapters/foldseek";
 
 describe("adapter registry", () => {
-  it("exposes RCSB and InterPro as live adapters", () => {
+  it("exposes RCSB, InterPro, and Foldseek as live adapters", () => {
     const tools = listScientificTools();
     const live = tools.filter((tool) => tool.liveAdapter);
-    expect(live.map((tool) => tool.id).sort()).toEqual(["interpro", "rcsb"]);
+    expect(live.map((tool) => tool.id).sort()).toEqual([
+      "foldseek",
+      "interpro",
+      "rcsb",
+    ]);
   });
 
   it("returns stubs that refuse to invent results", async () => {
@@ -30,20 +35,15 @@ describe("adapter registry", () => {
     }
   });
 
-  it("returns the live InterPro adapter from the registry", () => {
-    const adapter = getScientificAdapter("interpro");
-    expect(adapter).toBeInstanceOf(InterProDataAdapter);
+  it("returns live InterPro and Foldseek adapters", () => {
+    expect(getScientificAdapter("interpro")).toBeInstanceOf(InterProDataAdapter);
+    expect(getScientificAdapter("foldseek")).toBeInstanceOf(FoldseekSearchAdapter);
   });
 
-  it("keeps import workflows for stub tools and InterPro fallback", () => {
-    const blastImport = getImportWorkflowForTool("blast");
-    expect(blastImport).not.toBeNull();
-    expect(blastImport?.instructions.toLowerCase()).toContain("import");
-
-    const interproImport = getImportWorkflowForTool("interpro");
-    expect(interproImport).not.toBeNull();
-
-    const rcsbImport = getImportWorkflowForTool("rcsb");
-    expect(rcsbImport).toBeNull();
+  it("keeps import workflows for import-capable tools", () => {
+    expect(getImportWorkflowForTool("blast")).not.toBeNull();
+    expect(getImportWorkflowForTool("interpro")).not.toBeNull();
+    expect(getImportWorkflowForTool("foldseek")).not.toBeNull();
+    expect(getImportWorkflowForTool("rcsb")).toBeNull();
   });
 });

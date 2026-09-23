@@ -5,10 +5,16 @@ import { getRequestDatabase } from "@/lib/db/request";
 import { getProjectOverview, ServiceError } from "@/lib/services/projectService";
 import { listNotesForModule } from "@/lib/services/noteService";
 import { listInterProResults } from "@/lib/services/interproService";
+import { listFoldseekResults } from "@/lib/services/foldseekService";
+import { listModuleJobs } from "@/lib/services/importToolService";
 import { getModuleBySlug, PDB_SETUP_MODULE_ID } from "@/modules/registry";
 import { PdbSetupModule } from "@/modules/pdb-setup/PdbSetupModule";
 import { InterProModule } from "@/modules/interpro/InterProModule";
+import { FoldseekModule } from "@/modules/foldseek/FoldseekModule";
+import { ImportToolModule } from "@/modules/import-tool/ImportToolModule";
+import { IMPORT_MODULE_CONFIG } from "@/modules/import-tool/verificationNotes";
 import { UnavailableModule } from "@/modules/placeholders/UnavailableModule";
+import { getImportWorkflowForTool } from "@/adapters/registry";
 
 export const dynamic = "force-dynamic";
 
@@ -55,6 +61,38 @@ export default async function ModulePage({
         notes={notes}
         normalized={interpro.latestNormalized}
         jobs={interpro.jobs}
+      />
+    );
+  } else if (definition.id === "foldseek") {
+    const foldseek = await listFoldseekResults(db, projectId);
+    body = (
+      <FoldseekModule
+        projectId={projectId}
+        module={definition}
+        run={run}
+        notes={notes}
+        normalized={foldseek.latestNormalized}
+        jobs={foldseek.jobs}
+        pdbId={overview.structure?.pdbId ?? null}
+      />
+    );
+  } else if (definition.id in IMPORT_MODULE_CONFIG) {
+    const config = IMPORT_MODULE_CONFIG[definition.id]!;
+    const workflow = getImportWorkflowForTool(definition.id);
+    const jobs = await listModuleJobs(db, projectId, definition.slug);
+    body = (
+      <ImportToolModule
+        projectId={projectId}
+        module={definition}
+        run={run}
+        notes={notes}
+        jobs={jobs}
+        toolName={config.toolName}
+        instructions={workflow?.instructions ?? config.instructions}
+        acceptedFormats={
+          workflow?.acceptedFormats ?? config.acceptedFormats
+        }
+        verificationNote={config.verificationNote}
       />
     );
   } else {

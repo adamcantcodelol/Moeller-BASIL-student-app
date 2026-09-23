@@ -5,10 +5,21 @@ import {
   assertModuleAccessible,
   completePdbSetup,
 } from "@/lib/services/moduleRunService";
+import { completeImportModule } from "@/lib/services/importToolService";
+import { completeInterProModule } from "@/lib/services/interproService";
+import { completeFoldseekModule } from "@/lib/services/foldseekService";
 import { completePdbSetupSchema } from "@/lib/validation/project";
 import { PDB_SETUP_MODULE_ID } from "@/modules/registry";
 
 export const dynamic = "force-dynamic";
+
+const IMPORT_COMPLETE_SLUGS = new Set([
+  "sprite",
+  "blast",
+  "clean",
+  "dali",
+  "swissdock",
+]);
 
 export async function GET(
   _request: Request,
@@ -32,21 +43,38 @@ export async function PATCH(
   try {
     const { projectId, moduleSlug } = await context.params;
     const definition = await assertModuleAccessible(moduleSlug);
-    if (definition.id !== PDB_SETUP_MODULE_ID) {
-      return jsonError(
-        "This module is not implemented yet and cannot be marked complete.",
-        400,
-      );
-    }
     const body = await request.json();
     const parsed = completePdbSetupSchema.safeParse(body);
     if (!parsed.success) {
-      return jsonError("Send { \"complete\": true } to finish PDB Setup.", 400);
+      return jsonError('Send { "complete": true } to finish this module.', 400);
     }
+
     const db = await getRequestDatabase();
-    const run = await completePdbSetup(db, projectId);
-    return Response.json({ run });
+
+    if (definition.id === PDB_SETUP_MODULE_ID) {
+      const run = await completePdbSetup(db, projectId);
+      return Response.json({ run });
+    }
+    if (definition.id === "interpro") {
+      return Response.json(await completeInterProModule(db, projectId));
+    }
+    if (definition.id === "foldseek") {
+      return Response.json(await completeFoldseekModule(db, projectId));
+    }
+    if (IMPORT_COMPLETE_SLUGS.has(definition.slug)) {
+      return Response.json(
+        await completeImportModule(db, projectId, definition.slug),
+      );
+    }
+
+    return jsonError(
+      "This module is not implemented yet and cannot be marked complete.",
+      400,
+    );
   } catch (error) {
+    if (error instanceof SyntaxError) {
+      return jsonError("Request body must be valid JSON.", 400);
+    }
     return handleServiceError(error);
   }
 }

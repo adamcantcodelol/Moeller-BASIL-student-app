@@ -2,21 +2,17 @@
 
 ## Live
 
-- **RCSB PDB Data API** — Protein / PDB Setup (Phase 2)
-- **InterPro REST API** — InterPro module (Phase 4): UniProt accession → domains / families / signatures with job + cache + provenance. Import fallback available when the API is flaky.
+- **RCSB PDB Data API** — PDB Setup
+- **InterPro REST API** — UniProt accession annotations (+ import fallback)
+- **Foldseek Search Server API** — structure search vs pdb100 (+ import fallback)
 
-## Placeholders / stubs
+## Implemented via structured import
 
-The following tools remain registered with stub adapters that throw
-`ScientificAdapterNotImplementedError`, plus optional import scaffolding:
+- SPRITE, BLAST, CLEAN, Dali, SwissDock — verified lacking a Worker-friendly free sync path; import UI stores raw exports with provenance.
 
-- SPRITE
-- BLAST (async NCBI polling unfit for Workers in Phase 4; import-only for now)
-- CLEAN
-- Dali
-- Foldseek
-- SwissDock
+## Not implemented yet
 
-Before implementing any remaining adapter, verify the legitimate mechanism
-(endpoint, auth, rate limits, terms, automation allowed). If verification fails,
-use the structured import workflow instead of fabricated results.
+- Active-Site Evidence Synthesis
+- Hypothesis Builder
+- ShannonBot Review
+- Reports
