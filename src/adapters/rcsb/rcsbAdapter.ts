@@ -1,4 +1,6 @@
 import type { ScientificAdapter } from "@/adapters/scientificAdapter";
+import { ScientificHttpError } from "@/adapters/errors";
+import { fetchJsonObject, DEFAULT_ADAPTER_TIMEOUT_MS } from "@/adapters/fetch";
 import { normalizeRcsbPayload } from "@/adapters/rcsb/normalize";
 import type {
   RcsbFetchInput,
@@ -8,9 +10,9 @@ import type {
 import { RcsbAdapterError } from "@/adapters/rcsb/types";
 import { validatePdbId } from "@/lib/validation/pdbId";
 import { nowIso } from "@/lib/ids";
+import { buildProvenance } from "@/lib/provenance/buildProvenance";
 import type { Provenance } from "@/types/provenance";
 
-const DEFAULT_TIMEOUT_MS = 15_000;
 const ENTRY_URL = (pdbId: string) =>
   `https://data.rcsb.org/rest/v1/core/entry/${pdbId}`;
 const POLYMER_ENTITY_URL = (pdbId: string, entityId: string) =>
@@ -37,6 +39,38 @@ function readPolymerEntityIds(entry: Record<string, unknown>): string[] {
   return ids.filter((id): id is string => typeof id === "string");
 }
 
+function mapHttpError(error: unknown, pdbId: string): never {
+  if (error instanceof ScientificHttpError) {
+    if (error.code === "TIMEOUT") {
+      throw new RcsbAdapterError(
+        "TIMEOUT",
+        `Timed out contacting RCSB for ${pdbId}. Student work was not replaced with simulated data.`,
+        error,
+      );
+    }
+    if (error.code === "NOT_FOUND") {
+      throw new RcsbAdapterError(
+        "NOT_FOUND",
+        `PDB ID ${pdbId} was not found in the RCSB archive. Confirm the identifier on rcsb.org. No metadata was invented.`,
+        error,
+      );
+    }
+    if (error.code === "INVALID_RESPONSE") {
+      throw new RcsbAdapterError(
+        "INVALID_RESPONSE",
+        `RCSB returned an unexpected payload for ${pdbId}.`,
+        error,
+      );
+    }
+    const httpPart =
+      error.httpStatus !== null
+        ? `RCSB returned HTTP ${error.httpStatus} for ${pdbId}. No fabricated metadata was stored.`
+        : `Could not reach RCSB for ${pdbId}. Check network access and retry. No fabricated metadata was stored.`;
+    throw new RcsbAdapterError("NETWORK", httpPart, error);
+  }
+  throw error;
+}
+
 export class RcsbDataAdapter
   implements
     ScientificAdapter<RcsbFetchInput, RcsbRawPayload, RcsbNormalizedStructure>
@@ -47,7 +81,7 @@ export class RcsbDataAdapter
 
   constructor(options: RcsbAdapterOptions = {}) {
     this.fetchImpl = options.fetchImpl ?? fetch;
-    this.timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+    this.timeoutMs = options.timeoutMs ?? DEFAULT_ADAPTER_TIMEOUT_MS;
   }
 
   async run(input: RcsbFetchInput): Promise<RcsbRawPayload> {
@@ -58,17 +92,35 @@ export class RcsbDataAdapter
     const pdbId = validation.pdbId;
     const retrievedAt = nowIso();
 
-    const entry = await this.fetchJson(ENTRY_URL(pdbId), pdbId);
+    let entry: Record<string, unknown>;
+    try {
+      entry = await fetchJsonObject(ENTRY_URL(pdbId), {
+        fetchImpl: this.fetchImpl,
+        timeoutMs: this.timeoutMs,
+        label: `RCSB entry ${pdbId}`,
+      });
+    } catch (error) {
+      mapHttpError(error, pdbId);
+    }
+
     const entityIds = readPolymerEntityIds(entry);
     const polymerEntities: Record<string, unknown>[] = [];
 
     for (const entityId of entityIds) {
-      polymerEntities.push(
-        await this.fetchJson(POLYMER_ENTITY_URL(pdbId, entityId), pdbId),
-      );
+      try {
+        polymerEntities.push(
+          await fetchJsonObject(POLYMER_ENTITY_URL(pdbId, entityId), {
+            fetchImpl: this.fetchImpl,
+            timeoutMs: this.timeoutMs,
+            label: `RCSB polymer entity ${pdbId}/${entityId}`,
+          }),
+        );
+      } catch (error) {
+        mapHttpError(error, pdbId);
+      }
     }
 
-    this.lastProvenance = {
+    this.lastProvenance = buildProvenance({
       tool: "RCSB PDB Data API",
       source: "https://data.rcsb.org/",
       retrievedAt,
@@ -79,7 +131,7 @@ export class RcsbDataAdapter
       },
       rawResultId: null,
       version: "rest/v1",
-    };
+    });
 
     return { entry, polymerEntities };
   }
@@ -104,68 +156,16 @@ export class RcsbDataAdapter
 
   getProvenance(): Provenance {
     if (!this.lastProvenance) {
-      return {
+      return buildProvenance({
         tool: "RCSB PDB Data API",
         source: "https://data.rcsb.org/",
         retrievedAt: "",
         parameters: {},
         rawResultId: null,
         version: "rest/v1",
-      };
+      });
     }
     return this.lastProvenance;
-  }
-
-  private async fetchJson(
-    url: string,
-    pdbId: string,
-  ): Promise<Record<string, unknown>> {
-    let response: Response;
-    try {
-      response = await this.fetchImpl(url, {
-        headers: { Accept: "application/json" },
-        signal: AbortSignal.timeout(this.timeoutMs),
-      });
-    } catch (error) {
-      if (
-        error instanceof Error &&
-        (error.name === "TimeoutError" || error.name === "AbortError")
-      ) {
-        throw new RcsbAdapterError(
-          "TIMEOUT",
-          `Timed out contacting RCSB for ${pdbId}. Student work was not replaced with simulated data.`,
-          error,
-        );
-      }
-      throw new RcsbAdapterError(
-        "NETWORK",
-        `Could not reach RCSB for ${pdbId}. Check network access and retry. No fabricated metadata was stored.`,
-        error,
-      );
-    }
-
-    if (response.status === 404) {
-      throw new RcsbAdapterError(
-        "NOT_FOUND",
-        `PDB ID ${pdbId} was not found in the RCSB archive. Confirm the identifier on rcsb.org. No metadata was invented.`,
-      );
-    }
-
-    if (!response.ok) {
-      throw new RcsbAdapterError(
-        "NETWORK",
-        `RCSB returned HTTP ${response.status} for ${pdbId}. No fabricated metadata was stored.`,
-      );
-    }
-
-    const body: unknown = await response.json();
-    if (body === null || typeof body !== "object" || Array.isArray(body)) {
-      throw new RcsbAdapterError(
-        "INVALID_RESPONSE",
-        `RCSB returned an unexpected payload for ${pdbId}.`,
-      );
-    }
-    return body as Record<string, unknown>;
   }
 }
 

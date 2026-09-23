@@ -54,6 +54,8 @@ Scientific infrastructure:
 - provenance
 - error handling
 
+See `docs/PHASE3.md`.
+
 ### Phase 4
 
 Scientific modules:
