@@ -25,7 +25,7 @@ export const CURRICULUM_MODULES: readonly BasilModuleDefinition[] = [
     description: "Investigate structural and sequence relationships using SPRITE.",
     purpose: "Collect SPRITE evidence defined by the BASIL curriculum.",
     instructions:
-      "SPRITE has no verified free public API suitable for Cloudflare Workers. Run the BASIL-approved SPRITE workflow externally, then import the raw export. Results are never invented.",
+      "Run live SPRITE from this page (Worker proxies grafss.ukm.my). Students never leave the Moeller BASIL site. Default database csa3. Import remains an optional fallback if live SPRITE is down. Results are never invented.",
     order: 1,
     implemented: true,
   },

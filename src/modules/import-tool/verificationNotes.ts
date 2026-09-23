@@ -12,9 +12,9 @@ export const IMPORT_MODULE_CONFIG: Record<string, ImportModuleConfig> = {
     toolName: "SPRITE",
     acceptedFormats: ["text", "tsv", "csv", "json"],
     instructions:
-      "Run the BASIL-approved SPRITE workflow, then paste or upload the raw output. Do not paste fabricated hits.",
+      "Prefer the live Run SPRITE button (Worker proxies grafss.ukm.my). Use this import only if live SPRITE is unavailable. Paste or upload a legitimate GrAfSS SPRITE export — do not paste fabricated hits.",
     verificationNote:
-      "Verified: no free public SPRITE REST API suitable for Cloudflare Workers was found. Structured import is the legitimate Phase 4 path.",
+      "Verified: GrAfSS SPRITE REST API at https://grafss.ukm.my/api/sprite (upload + session_data + results). Live path is Worker-proxied so students never leave moeller-basil.workers.dev. Import remains optional fallback.",
   },
   blast: {
     toolName: "BLAST",

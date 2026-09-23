@@ -5,12 +5,13 @@ import {
 import { createRcsbDataAdapter } from "@/adapters/rcsb";
 import { createInterProDataAdapter } from "@/adapters/interpro";
 import { createFoldseekSearchAdapter } from "@/adapters/foldseek";
+import { createSpriteSearchAdapter } from "@/adapters/sprite";
 import type { ImportWorkflowDefinition } from "@/types/importWorkflow";
 import { getImportWorkflow } from "@/adapters/import/workflows";
 
 /**
  * Tools known to the platform.
- * RCSB + InterPro + Foldseek are live; others are stubs or import-only.
+ * RCSB + InterPro + Foldseek + SPRITE are live; others are stubs or import-only.
  */
 export const SCIENTIFIC_TOOL_IDS = [
   "rcsb",
@@ -47,7 +48,7 @@ export const SCIENTIFIC_TOOL_REGISTRY: readonly ScientificToolRegistration[] = [
   {
     id: "sprite",
     displayName: "SPRITE",
-    liveAdapter: false,
+    liveAdapter: true,
     importSupported: true,
     moduleId: "sprite",
   },
@@ -131,6 +132,14 @@ export function getScientificAdapter(
 
   if (registration.id === "foldseek" && registration.liveAdapter) {
     return createFoldseekSearchAdapter() as ScientificAdapter<
+      unknown,
+      unknown,
+      unknown
+    >;
+  }
+
+  if (registration.id === "sprite" && registration.liveAdapter) {
+    return createSpriteSearchAdapter() as ScientificAdapter<
       unknown,
       unknown,
       unknown

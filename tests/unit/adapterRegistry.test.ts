@@ -11,15 +11,17 @@ import {
 import { ScientificAdapterNotImplementedError } from "@/adapters/scientificAdapter";
 import { InterProDataAdapter } from "@/adapters/interpro";
 import { FoldseekSearchAdapter } from "@/adapters/foldseek";
+import { SpriteSearchAdapter } from "@/adapters/sprite";
 
 describe("adapter registry", () => {
-  it("exposes RCSB, InterPro, and Foldseek as live adapters", () => {
+  it("exposes RCSB, InterPro, Foldseek, and SPRITE as live adapters", () => {
     const tools = listScientificTools();
     const live = tools.filter((tool) => tool.liveAdapter);
     expect(live.map((tool) => tool.id).sort()).toEqual([
       "foldseek",
       "interpro",
       "rcsb",
+      "sprite",
     ]);
   });
 
@@ -35,15 +37,17 @@ describe("adapter registry", () => {
     }
   });
 
-  it("returns live InterPro and Foldseek adapters", () => {
+  it("returns live InterPro, Foldseek, and SPRITE adapters", () => {
     expect(getScientificAdapter("interpro")).toBeInstanceOf(InterProDataAdapter);
     expect(getScientificAdapter("foldseek")).toBeInstanceOf(FoldseekSearchAdapter);
+    expect(getScientificAdapter("sprite")).toBeInstanceOf(SpriteSearchAdapter);
   });
 
   it("keeps import workflows for import-capable tools", () => {
     expect(getImportWorkflowForTool("blast")).not.toBeNull();
     expect(getImportWorkflowForTool("interpro")).not.toBeNull();
     expect(getImportWorkflowForTool("foldseek")).not.toBeNull();
+    expect(getImportWorkflowForTool("sprite")).not.toBeNull();
     expect(getImportWorkflowForTool("rcsb")).toBeNull();
   });
 });

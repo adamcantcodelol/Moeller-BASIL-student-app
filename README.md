@@ -5,16 +5,11 @@ Molecular Biology Research Course.
 
 ## Current status
 
-Phase 1 foundation is implemented: project shell, routing, D1 schema,
-curriculum registry 00–11, PDB identifier validation, notes, demo data, and
-placeholder module pages.
-
-Phase 2 (in progress / landing): RCSB PDB Data API adapter, structure
-metadata persistence with provenance, and Mol* viewer for module 00.
-
-Not implemented yet: SPRITE, BLAST, InterPro, CLEAN, Dali, Foldseek,
-SwissDock, ShannonBot, reports, or Mol* active-site / overlay modes. Those
-modules are registered as placeholders and do not invent scientific results.
+Classroom build is deployed on Cloudflare Workers. Live scientific paths:
+RCSB/Mol*, InterPro, Foldseek, and **SPRITE** (Worker proxy of
+`grafss.ukm.my` so students never leave this site). Import fallbacks remain
+for BLAST / CLEAN / Dali / SwissDock (and optional SPRITE import if live is
+down). Results are never invented.
 
 ## What It Does
 

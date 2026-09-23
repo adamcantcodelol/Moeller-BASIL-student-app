@@ -59,7 +59,7 @@ const IMPORT_WORKFLOWS: Record<string, ImportWorkflowDefinition> = {
   sprite: defineImportWorkflow(
     "sprite",
     ["text", "tsv", "csv", "json"],
-    "Run SPRITE using the BASIL-approved workflow, then import the raw output file or pasted results. The platform will not invent SPRITE hits. Tool-specific parsing lands in Phase 4 after mechanism verification.",
+    "Optional fallback: if live Worker-proxied SPRITE is down, import a legitimate GrAfSS SPRITE export. The platform will not invent SPRITE hits. Prefer the live Run SPRITE button so students never open grafss.ukm.my.",
   ),
   blast: defineImportWorkflow(
     "blast",

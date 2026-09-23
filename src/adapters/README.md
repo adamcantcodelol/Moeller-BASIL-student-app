@@ -7,10 +7,12 @@ Adapters implement `ScientificAdapter` and never invent scientific payloads.
 - **RCSB** (`src/adapters/rcsb/`)
 - **InterPro** (`src/adapters/interpro/`) — UniProt accession lookup
 - **Foldseek** (`src/adapters/foldseek/`) — Search Server ticket + result
+- **SPRITE** (`src/adapters/sprite/`) — GrAfSS upload + session poll + results (`grafss.ukm.my`)
 
 ## Import-only curriculum tools
 
-SPRITE, BLAST, CLEAN, Dali, SwissDock — see `docs/PHASE4.md` verification notes.
+BLAST, CLEAN, Dali, SwissDock — see `docs/PHASE4.md` verification notes.
+SPRITE also keeps an optional import fallback when live GrAfSS is down.
 Import scaffolding: `src/adapters/import/`.
 
 ## Infrastructure

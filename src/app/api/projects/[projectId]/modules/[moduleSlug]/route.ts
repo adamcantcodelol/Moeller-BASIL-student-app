@@ -8,6 +8,7 @@ import {
 import { completeImportModule } from "@/lib/services/importToolService";
 import { completeInterProModule } from "@/lib/services/interproService";
 import { completeFoldseekModule } from "@/lib/services/foldseekService";
+import { completeSpriteModule } from "@/lib/services/spriteService";
 import { completeActiveSiteModule } from "@/lib/services/evidenceService";
 import { completeHypothesisModule } from "@/lib/services/hypothesisService";
 import { completeShannonBotModule } from "@/lib/services/shannonBotService";
@@ -17,7 +18,6 @@ import { PDB_SETUP_MODULE_ID } from "@/modules/registry";
 export const dynamic = "force-dynamic";
 
 const IMPORT_COMPLETE_SLUGS = new Set([
-  "sprite",
   "blast",
   "clean",
   "dali",
@@ -63,6 +63,9 @@ export async function PATCH(
     }
     if (definition.id === "foldseek") {
       return Response.json(await completeFoldseekModule(db, projectId));
+    }
+    if (definition.id === "sprite") {
+      return Response.json(await completeSpriteModule(db, projectId));
     }
     if (definition.id === "active-site-evidence") {
       return Response.json(await completeActiveSiteModule(db, projectId));

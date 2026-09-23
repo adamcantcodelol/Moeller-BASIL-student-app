@@ -6,6 +6,7 @@ import { getProjectOverview, ServiceError } from "@/lib/services/projectService"
 import { listNotesForModule } from "@/lib/services/noteService";
 import { listInterProResults } from "@/lib/services/interproService";
 import { listFoldseekResults } from "@/lib/services/foldseekService";
+import { listSpriteResults } from "@/lib/services/spriteService";
 import { listModuleJobs } from "@/lib/services/importToolService";
 import {
   collectUniqueResidues,
@@ -21,6 +22,7 @@ import { getModuleBySlug, PDB_SETUP_MODULE_ID } from "@/modules/registry";
 import { PdbSetupModule } from "@/modules/pdb-setup/PdbSetupModule";
 import { InterProModule } from "@/modules/interpro/InterProModule";
 import { FoldseekModule } from "@/modules/foldseek/FoldseekModule";
+import { SpriteModule } from "@/modules/sprite/SpriteModule";
 import { ImportToolModule } from "@/modules/import-tool/ImportToolModule";
 import { IMPORT_MODULE_CONFIG } from "@/modules/import-tool/verificationNotes";
 import { ActiveSiteEvidenceModule } from "@/modules/active-site-evidence/ActiveSiteEvidenceModule";
@@ -87,6 +89,19 @@ export default async function ModulePage({
         notes={notes}
         normalized={foldseek.latestNormalized}
         jobs={foldseek.jobs}
+        pdbId={overview.structure?.pdbId ?? null}
+      />
+    );
+  } else if (definition.id === "sprite") {
+    const sprite = await listSpriteResults(db, projectId);
+    body = (
+      <SpriteModule
+        projectId={projectId}
+        module={definition}
+        run={run}
+        notes={notes}
+        normalized={sprite.latestNormalized}
+        jobs={sprite.jobs}
         pdbId={overview.structure?.pdbId ?? null}
       />
     );

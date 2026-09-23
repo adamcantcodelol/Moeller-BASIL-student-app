@@ -38,16 +38,16 @@ This file lists the only remaining human steps.
 6. **Smoke-test** the printed `*.workers.dev` URL (or custom domain):
    - Home + create project
    - PDB setup + RCSB + Mol*
-   - InterPro / Foldseek live paths
-   - Import path for BLAST / SPRITE / CLEAN / Dali / SwissDock
+   - InterPro / Foldseek / SPRITE live paths
+   - Import path for BLAST / CLEAN / Dali / SwissDock (SPRITE import optional fallback)
    - Evidence, hypothesis, ShannonBot, reports
    - Load demo → **DEMO DATA** banner
 
 ## What the public student URL unlocks
 
 - Full BASIL curriculum modules 00–11 in one guided workflow
-- Live: RCSB/Mol*, InterPro, Foldseek
-- Import: SPRITE, BLAST, CLEAN, Dali, SwissDock
+- Live: RCSB/Mol*, InterPro, Foldseek, SPRITE (Worker → grafss.ukm.my)
+- Import: BLAST, CLEAN, Dali, SwissDock (SPRITE import optional fallback)
 - Evidence synthesis, ChimeraX helpers, hypothesis builder
 - ShannonBot (local always; optional Groq/OpenRouter if secrets set)
 - Student + teacher reports

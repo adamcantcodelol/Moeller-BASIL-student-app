@@ -12,8 +12,8 @@ const STUB_TOOL_IDS = SCIENTIFIC_TOOL_REGISTRY.filter(
 ).map((tool) => tool.id);
 
 /**
- * Explicit Phase 3 stubs. Each throws ScientificAdapterNotImplementedError
- * rather than claiming BLAST/SPRITE/etc. work.
+ * Explicit stubs for tools without a live adapter. Each throws
+ * ScientificAdapterNotImplementedError rather than claiming BLAST/etc. work.
  */
 export function createStubAdapter(
   toolId: ScientificToolId | string,
