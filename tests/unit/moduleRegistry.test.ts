@@ -24,8 +24,9 @@ describe("curriculum registry", () => {
     ]);
   });
 
-  it("marks only pdb-setup as implemented", () => {
-    expect(getImplementedModuleIds()).toEqual(["pdb-setup"]);
+  it("marks pdb-setup and interpro as implemented", () => {
+    expect(getImplementedModuleIds()).toEqual(["pdb-setup", "interpro"]);
     expect(getModuleBySlug("blast")?.implemented).toBe(false);
+    expect(getModuleBySlug("interpro")?.implemented).toBe(true);
   });
 });

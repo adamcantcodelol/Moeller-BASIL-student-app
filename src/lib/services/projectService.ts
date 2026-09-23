@@ -1,7 +1,7 @@
 import type { AppDatabase } from "@/db/client";
 import { moduleRuns, projects } from "@/db/schema";
 import { createId, nowIso } from "@/lib/ids";
-import { CURRICULUM_MODULES, PDB_SETUP_MODULE_ID } from "@/modules/registry";
+import { CURRICULUM_MODULES } from "@/modules/registry";
 import { getProjectById, listProjects } from "@/lib/db/queries/projects";
 import { listModuleRunsForProject } from "@/lib/db/queries/moduleRuns";
 import { getStructureByProjectId } from "@/lib/db/queries/structures";
@@ -52,8 +52,7 @@ export async function createProject(
       id: createId(),
       projectId: id,
       moduleId: module.id,
-      status:
-        module.id === PDB_SETUP_MODULE_ID ? "not_started" : "not_available_yet",
+      status: module.implemented ? "not_started" : "not_available_yet",
       startedAt: null,
       completedAt: null,
       parametersJson: null,

@@ -5,13 +5,16 @@ Adapters implement `ScientificAdapter` and never invent scientific payloads.
 ## Implemented (live)
 
 - **RCSB PDB Data API** (`src/adapters/rcsb/`) — entry + polymer entity
-  metadata for Phase 2 PDB Setup. Free public REST endpoints under
-  `https://data.rcsb.org/rest/v1/core/`. Uses shared `fetchJsonWithTimeout`.
+  metadata for PDB Setup. Free public REST under `https://data.rcsb.org/rest/v1/core/`.
+- **InterPro REST API** (`src/adapters/interpro/`) — UniProt accession
+  annotations for the InterPro module. Free public REST under
+  `https://www.ebi.ac.uk/interpro/api/`. Uses Phase 3 jobs + response cache.
+  Import fallback remains available.
 
-## Infrastructure (Phase 3)
+## Infrastructure
 
 - `scientificAdapter.ts` — interface + not-implemented factory
-- `errors.ts` / `fetch.ts` — shared errors and timed JSON GET
+- `errors.ts` / `fetch.ts` — shared errors and timed JSON GET (404/204 → NOT_FOUND)
 - `registry.ts` — tool registration (live vs stub vs import)
 - `stubs/` — explicit stubs that throw `ScientificAdapterNotImplementedError`
 - `import/` — import workflow definitions + raw import storage
@@ -21,7 +24,7 @@ Adapters implement `ScientificAdapter` and never invent scientific payloads.
 
 ## Not implemented (do not claim)
 
-SPRITE, BLAST, InterPro, CLEAN, Dali, Foldseek, SwissDock.
+SPRITE, BLAST, CLEAN, Dali, Foldseek, SwissDock.
 
 Unimplemented adapters must throw `ScientificAdapterNotImplementedError` rather
 than returning fabricated results. Import scaffolding may store **raw** student

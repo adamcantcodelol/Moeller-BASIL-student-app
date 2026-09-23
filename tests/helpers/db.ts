@@ -11,6 +11,7 @@ export async function createTestDatabase(): Promise<AppDatabase> {
     "drizzle/0001_init.sql",
     "drizzle/0002_seed_modules.sql",
     "drizzle/0003_phase3_jobs_cache.sql",
+    "drizzle/0004_phase4_interpro.sql",
   ];
 
   for (const relative of migrations) {

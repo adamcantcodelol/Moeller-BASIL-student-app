@@ -15,9 +15,10 @@ SPRITE, BLAST, InterPro, CLEAN, Dali, Foldseek, or SwissDock are automated.
 - Import workflow scaffolding (format validation + raw storage, source=`import`)
 - D1 migration `drizzle/0003_phase3_jobs_cache.sql`
 
-## Explicitly excluded
+## Explicitly excluded (at Phase 3 close)
 
 - Live BLAST / SPRITE / InterPro / CLEAN / Dali / Foldseek / SwissDock adapters
+  (InterPro went live in Phase 4 — see `PHASE4.md`)
 - Invented endpoints or fabricated scientific hits
 - Deployment (`wrangler deploy`) — build only until John says to deploy
 - Active-site synthesis, ShannonBot, reports

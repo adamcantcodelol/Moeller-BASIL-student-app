@@ -25,6 +25,16 @@ describe("fetchJsonWithTimeout", () => {
     } satisfies Partial<ScientificHttpError>);
   });
 
+  it("maps HTTP 204 to NOT_FOUND", async () => {
+    const fetchImpl = vi.fn(async () => new Response(null, { status: 204 }));
+    await expect(
+      fetchJsonObject("https://example.test/empty", {
+        fetchImpl: fetchImpl as typeof fetch,
+        label: "example",
+      }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND", httpStatus: 204 });
+  });
+
   it("maps timeouts", async () => {
     const fetchImpl = vi.fn(async () => {
       const error = new Error("aborted");
