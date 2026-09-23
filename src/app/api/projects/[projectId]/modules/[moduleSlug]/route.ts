@@ -9,6 +9,8 @@ import { completeImportModule } from "@/lib/services/importToolService";
 import { completeInterProModule } from "@/lib/services/interproService";
 import { completeFoldseekModule } from "@/lib/services/foldseekService";
 import { completeActiveSiteModule } from "@/lib/services/evidenceService";
+import { completeHypothesisModule } from "@/lib/services/hypothesisService";
+import { completeShannonBotModule } from "@/lib/services/shannonBotService";
 import { completePdbSetupSchema } from "@/lib/validation/project";
 import { PDB_SETUP_MODULE_ID } from "@/modules/registry";
 
@@ -64,6 +66,12 @@ export async function PATCH(
     }
     if (definition.id === "active-site-evidence") {
       return Response.json(await completeActiveSiteModule(db, projectId));
+    }
+    if (definition.id === "hypothesis-builder") {
+      return Response.json(await completeHypothesisModule(db, projectId));
+    }
+    if (definition.id === "shannonbot-review") {
+      return Response.json(await completeShannonBotModule(db, projectId));
     }
     if (IMPORT_COMPLETE_SLUGS.has(definition.slug)) {
       return Response.json(

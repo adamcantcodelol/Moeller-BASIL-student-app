@@ -2,20 +2,17 @@
 
 ## Live
 
-- **RCSB PDB Data API** — PDB Setup
-- **InterPro REST API** — UniProt accession annotations (+ import fallback)
-- **Foldseek Search Server API** — structure search vs pdb100 (+ import fallback)
+- RCSB, InterPro, Foldseek
 
-## Implemented via structured import
+## Import
 
 - SPRITE, BLAST, CLEAN, Dali, SwissDock
 
-## Evidence synthesis (Phase 5)
+## Synthesis / mentoring / reports
 
-- **Active-Site Evidence Synthesis** — student records residues citing earlier modules; ChimeraX + Mol* modes; never invents residues
+- Active-Site Evidence Synthesis (student residues only)
+- Hypothesis Builder (student-authored)
+- ShannonBot (local Socratic; optional LLM key blocker documented)
+- Reports (markdown from stored data)
 
-## Not implemented yet
-
-- Hypothesis Builder
-- ShannonBot Review
-- Reports
+All modules refuse to invent scientific results.
