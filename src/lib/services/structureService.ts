@@ -145,6 +145,7 @@ export async function fetchAndSaveRcsbStructure(
     experimentalMethod: normalized.experimentalMethod,
     resolutionAngstrom: normalized.resolutionAngstrom,
     polymerEntities: normalized.polymerEntities,
+    uniprotAccessions: normalized.uniprotAccessions,
     structureCifUrl: normalized.structureCifUrl,
     structurePdbUrl: normalized.structurePdbUrl,
     entryPageUrl: normalized.entryPageUrl,

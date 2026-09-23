@@ -10,9 +10,37 @@ export function ModuleNav({
   moduleRuns?: ModuleRun[];
 }) {
   return (
-    <nav className="module-nav" aria-label="BASIL curriculum">
+    <nav className="module-nav" aria-label="BASIL navigation">
+      {projectId ? (
+        <>
+          <h2>Classroom path</h2>
+          <ol className="classroom-nav">
+            <li>
+              <Link href={`/projects/${projectId}`}>Overview</Link>
+            </li>
+            <li>
+              <Link href={`/projects/${projectId}/modules/pdb-setup`}>
+                PDB / RCSB
+              </Link>
+            </li>
+            <li>
+              <Link href={`/projects/${projectId}/analysis`}>
+                Analysis progress
+              </Link>
+            </li>
+            <li>
+              <Link href={`/projects/${projectId}/results`}>Results</Link>
+            </li>
+            <li>
+              <Link href={`/projects/${projectId}/hypothesis`}>
+                Hypothesis
+              </Link>
+            </li>
+          </ol>
+        </>
+      ) : null}
       <h2>Curriculum 00–11</h2>
-      <ol>
+      <ol className="curriculum-nav">
         {CURRICULUM_MODULES.map((module) => {
           const run = moduleRuns?.find((item) => item.moduleId === module.id);
           const href = projectId

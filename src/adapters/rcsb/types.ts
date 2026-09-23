@@ -15,6 +15,8 @@ export interface RcsbPolymerEntityNormalized {
   chains: string[];
   sequence: string | null;
   organism: string | null;
+  /** UniProtKB accessions from RCSB / SIFTS mapping when present — never invented. */
+  uniprotAccessions: string[];
 }
 
 export interface RcsbNormalizedStructure {
@@ -27,6 +29,8 @@ export interface RcsbNormalizedStructure {
   experimentalMethod: string | null;
   resolutionAngstrom: number | null;
   polymerEntities: RcsbPolymerEntityNormalized[];
+  /** Deduped UniProt accessions across polymer entities (SIFTS via RCSB). Empty if none mapped. */
+  uniprotAccessions: string[];
   structureCifUrl: string;
   structurePdbUrl: string;
   entryPageUrl: string;

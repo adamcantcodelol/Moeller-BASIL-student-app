@@ -258,6 +258,35 @@ export const adapterResponseCache = sqliteTable(
   ],
 );
 
+
+// --- Classroom analysis pipeline ---
+
+export const analysisPipelines = sqliteTable(
+  "analysis_pipelines",
+  {
+    id: text("id").primaryKey(),
+    projectId: text("project_id")
+      .notNull()
+      .unique()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    status: text("status").notNull(),
+    currentStepIndex: integer("current_step_index").notNull().default(0),
+    stepsJson: text("steps_json").notNull(),
+    startedAt: text("started_at"),
+    finishedAt: text("finished_at"),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [
+    index("idx_analysis_pipelines_project").on(table.projectId),
+    index("idx_analysis_pipelines_status").on(table.status),
+    check(
+      "analysis_pipelines_status_check",
+      sql`${table.status} IN ('idle', 'running', 'completed', 'failed')`,
+    ),
+  ],
+);
+
 export const schema = {
   projects,
   structures,
@@ -272,4 +301,5 @@ export const schema = {
   reports,
   scientificJobs,
   adapterResponseCache,
+  analysisPipelines,
 };

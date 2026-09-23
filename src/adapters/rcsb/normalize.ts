@@ -66,11 +66,19 @@ function normalizePolymerEntity(
     asString(entityPoly?.pdbx_seq_one_letter_code)?.replace(/\s+/g, "") ??
     null;
 
+  const uniprotRaw = identifiers?.uniprot_ids;
+  const uniprotAccessions = Array.isArray(uniprotRaw)
+    ? uniprotRaw.filter(
+        (id): id is string => typeof id === "string" && id.trim() !== "",
+      )
+    : [];
+
   return {
     entityId,
     chains,
     sequence,
     organism: readOrganism(entity),
+    uniprotAccessions,
   };
 }
 
@@ -125,6 +133,10 @@ export function normalizeRcsbPayload(
     resolutionAngstrom = resolutionRaw[0];
   }
 
+  const uniprotAccessions = [
+    ...new Set(polymerEntities.flatMap((entity) => entity.uniprotAccessions)),
+  ];
+
   return {
     pdbId,
     title: asString(struct?.title),
@@ -136,6 +148,7 @@ export function normalizeRcsbPayload(
       asString(entryInfo?.experimental_method),
     resolutionAngstrom,
     polymerEntities,
+    uniprotAccessions,
     structureCifUrl: `https://files.rcsb.org/download/${pdbId}.cif`,
     structurePdbUrl: `https://files.rcsb.org/download/${pdbId}.pdb`,
     entryPageUrl: `https://www.rcsb.org/structure/${pdbId}`,

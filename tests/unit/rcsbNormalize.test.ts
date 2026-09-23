@@ -25,6 +25,10 @@ describe("normalizeRcsbPayload", () => {
     expect(normalized.experimentalMethod).toMatch(/X-RAY/i);
     expect(normalized.resolutionAngstrom).toBe(1.74);
     expect(normalized.polymerEntities).toHaveLength(2);
+    expect(normalized.uniprotAccessions).toEqual(
+      expect.arrayContaining(["P69905", "P68871"]),
+    );
+    expect(normalized.polymerEntities[0]?.uniprotAccessions).toContain("P69905");
     expect(normalized.structureCifUrl).toBe(
       "https://files.rcsb.org/download/4HHB.cif",
     );
