@@ -13,7 +13,7 @@ export const CURRICULUM_MODULES: readonly BasilModuleDefinition[] = [
     purpose:
       "Establish a verified protein structure identifier that later modules will analyze.",
     instructions:
-      "Enter a four-character PDB ID. Phase 1 stores the identifier only. Metadata retrieval and Mol* visualization are not run yet. Do not invent title, organism, sequence, or active-site information.",
+      "Enter a four-character PDB ID, then retrieve metadata from the RCSB PDB Data API. Review the Mol* view of the real RCSB coordinates. Do not invent title, organism, sequence, or active-site information.",
     order: 0,
     implemented: true,
   },

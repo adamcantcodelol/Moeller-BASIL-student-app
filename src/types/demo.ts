@@ -6,6 +6,7 @@ export const DEMO_PROJECT_NAME = "Demonstration project";
 
 /**
  * A real PDB identifier used only as a labeled example ID.
- * Phase 1 does not attach title, sequence, active-site, or tool results.
+ * DEMO DATA banner remains required. Metadata appears only after a real
+ * RCSB fetch; active-site residues are never invented.
  */
 export const DEMO_PDB_ID = "4HHB";

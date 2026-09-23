@@ -1,0 +1,242 @@
+{
+  "entry": {
+    "entry": {
+      "id": "4HHB"
+    },
+    "struct": {
+      "title": "THE CRYSTAL STRUCTURE OF HUMAN DEOXYHAEMOGLOBIN AT 1.74 ANGSTROMS RESOLUTION"
+    },
+    "exptl": [
+      {
+        "method": "X-RAY DIFFRACTION"
+      }
+    ],
+    "rcsb_entry_info": {
+      "assembly_count": 1,
+      "branched_entity_count": 0,
+      "cis_peptide_count": 0,
+      "deposited_atom_count": 4779,
+      "deposited_deuterated_water_count": 0,
+      "deposited_hydrogen_atom_count": 0,
+      "deposited_model_count": 1,
+      "deposited_modeled_polymer_monomer_count": 574,
+      "deposited_nonpolymer_entity_instance_count": 6,
+      "deposited_polymer_entity_instance_count": 4,
+      "deposited_polymer_monomer_count": 574,
+      "deposited_solvent_atom_count": 221,
+      "deposited_unmodeled_polymer_monomer_count": 0,
+      "disulfide_bond_count": 0,
+      "entity_count": 5,
+      "experimental_method": "X-ray",
+      "experimental_method_count": 1,
+      "inter_mol_covalent_bond_count": 0,
+      "inter_mol_metalic_bond_count": 4,
+      "molecular_weight": 64.74,
+      "na_polymer_entity_types": "Other",
+      "nonpolymer_bound_components": [
+        "HEM"
+      ],
+      "nonpolymer_entity_count": 2,
+      "nonpolymer_molecular_weight_maximum": 0.62,
+      "nonpolymer_molecular_weight_minimum": 0.09,
+      "polymer_composition": "heteromeric protein",
+      "polymer_entity_count": 2,
+      "polymer_entity_count_DNA": 0,
+      "polymer_entity_count_RNA": 0,
+      "polymer_entity_count_nucleic_acid": 0,
+      "polymer_entity_count_nucleic_acid_hybrid": 0,
+      "polymer_entity_count_protein": 2,
+      "polymer_entity_taxonomy_count": 2,
+      "polymer_molecular_weight_maximum": 15.89,
+      "polymer_molecular_weight_minimum": 15.15,
+      "polymer_monomer_count_maximum": 146,
+      "polymer_monomer_count_minimum": 141,
+      "resolution_combined": [
+        1.74
+      ],
+      "selected_polymer_entity_types": "Protein (only)",
+      "solvent_entity_count": 1,
+      "structure_determination_methodology": "experimental",
+      "structure_determination_methodology_priority": 10,
+      "diffrn_resolution_high": {
+        "provenance_source": "From refinement resolution cutoff",
+        "value": 1.74
+      }
+    },
+    "rcsb_entry_container_identifiers": {
+      "assembly_ids": [
+        "1"
+      ],
+      "entity_ids": [
+        "1",
+        "2",
+        "3",
+        "4",
+        "5"
+      ],
+      "entry_id": "4HHB",
+      "model_ids": [
+        1
+      ],
+      "non_polymer_entity_ids": [
+        "3",
+        "4"
+      ],
+      "polymer_entity_ids": [
+        "1",
+        "2"
+      ],
+      "pubmed_id": 6726807,
+      "rcsb_id": "4HHB"
+    },
+    "rcsb_id": "4HHB"
+  },
+  "polymerEntities": [
+    {
+      "entity_poly": {
+        "nstd_linkage": "no",
+        "nstd_monomer": "no",
+        "pdbx_seq_one_letter_code": "VLSPADKTNVKAAWGKVGAHAGEYGAEALERMFLSFPTTKTYFPHFDLSHGSAQVKGHGKKVADALTNAVAHVDDMPNALSALSDLHAHKLRVDPVNFKLLSHCLLVTLAAHLPAEFTPAVHASLDKFLASVSTVLTSKYR",
+        "pdbx_seq_one_letter_code_can": "VLSPADKTNVKAAWGKVGAHAGEYGAEALERMFLSFPTTKTYFPHFDLSHGSAQVKGHGKKVADALTNAVAHVDDMPNALSALSDLHAHKLRVDPVNFKLLSHCLLVTLAAHLPAEFTPAVHASLDKFLASVSTVLTSKYR",
+        "pdbx_strand_id": "A,C",
+        "rcsb_artifact_monomer_count": 0,
+        "rcsb_conflict_count": 0,
+        "rcsb_deletion_count": 0,
+        "rcsb_entity_polymer_type": "Protein",
+        "rcsb_insertion_count": 0,
+        "rcsb_mutation_count": 0,
+        "rcsb_non_std_monomer_count": 0,
+        "rcsb_sample_sequence_length": 141,
+        "type": "polypeptide(L)"
+      },
+      "rcsb_entity_source_organism": [
+        {
+          "common_name": "Human",
+          "ncbi_scientific_name": "Homo sapiens",
+          "ncbi_taxonomy_id": 9606,
+          "scientific_name": "Homo sapiens"
+        }
+      ],
+      "rcsb_polymer_entity_container_identifiers": {
+        "asym_ids": [
+          "A",
+          "C"
+        ],
+        "auth_asym_ids": [
+          "A",
+          "C"
+        ],
+        "chem_comp_monomers": [
+          "ALA",
+          "ARG",
+          "ASN",
+          "ASP",
+          "CYS",
+          "GLN",
+          "GLU",
+          "GLY",
+          "HIS",
+          "LEU",
+          "LYS",
+          "MET",
+          "PHE",
+          "PRO",
+          "SER",
+          "THR",
+          "TRP",
+          "TYR",
+          "VAL"
+        ],
+        "entity_id": "1",
+        "entry_id": "4HHB",
+        "rcsb_id": "4HHB_1",
+        "uniprot_ids": [
+          "P69905"
+        ],
+        "reference_sequence_identifiers": [
+          {
+            "database_accession": "P69905",
+            "database_name": "UniProt",
+            "entity_sequence_coverage": 1.0,
+            "provenance_source": "SIFTS",
+            "reference_sequence_coverage": 0.9929577464788732
+          }
+        ]
+      },
+      "rcsb_id": "4HHB_1"
+    },
+    {
+      "entity_poly": {
+        "nstd_linkage": "no",
+        "nstd_monomer": "no",
+        "pdbx_seq_one_letter_code": "VHLTPEEKSAVTALWGKVNVDEVGGEALGRLLVVYPWTQRFFESFGDLSTPDAVMGNPKVKAHGKKVLGAFSDGLAHLDNLKGTFATLSELHCDKLHVDPENFRLLGNVLVCVLAHHFGKEFTPPVQAAYQKVVAGVANALAHKYH",
+        "pdbx_seq_one_letter_code_can": "VHLTPEEKSAVTALWGKVNVDEVGGEALGRLLVVYPWTQRFFESFGDLSTPDAVMGNPKVKAHGKKVLGAFSDGLAHLDNLKGTFATLSELHCDKLHVDPENFRLLGNVLVCVLAHHFGKEFTPPVQAAYQKVVAGVANALAHKYH",
+        "pdbx_strand_id": "B,D",
+        "rcsb_artifact_monomer_count": 0,
+        "rcsb_conflict_count": 0,
+        "rcsb_deletion_count": 0,
+        "rcsb_entity_polymer_type": "Protein",
+        "rcsb_insertion_count": 0,
+        "rcsb_mutation_count": 0,
+        "rcsb_non_std_monomer_count": 0,
+        "rcsb_sample_sequence_length": 146,
+        "type": "polypeptide(L)"
+      },
+      "rcsb_entity_source_organism": [
+        {
+          "common_name": "Human",
+          "ncbi_scientific_name": "Homo sapiens",
+          "ncbi_taxonomy_id": 9606,
+          "scientific_name": "Homo sapiens"
+        }
+      ],
+      "rcsb_polymer_entity_container_identifiers": {
+        "asym_ids": [
+          "B",
+          "D"
+        ],
+        "auth_asym_ids": [
+          "B",
+          "D"
+        ],
+        "chem_comp_monomers": [
+          "ALA",
+          "ARG",
+          "ASN",
+          "ASP",
+          "CYS",
+          "GLN",
+          "GLU",
+          "GLY",
+          "HIS",
+          "LEU",
+          "LYS",
+          "MET",
+          "PHE",
+          "PRO",
+          "SER",
+          "THR",
+          "TRP",
+          "TYR",
+          "VAL"
+        ],
+        "entity_id": "2",
+        "entry_id": "4HHB",
+        "rcsb_id": "4HHB_2",
+        "uniprot_ids": [
+          "P68871"
+        ],
+        "reference_sequence_identifiers": [
+          {
+            "database_accession": "P68871",
+            "database_name": "UniProt",
+            "entity_sequence_coverage": 1.0,
+            "provenance_source": "SIFTS",
+            "reference_sequence_coverage": 0.9931972789115646
+          }
+        ]
+      },
+      "rcsb_id": "4HHB_2"
+    }
+  ]
+}

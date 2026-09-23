@@ -1,9 +1,16 @@
 # Scientific adapters
 
-Phase 1 defines the `ScientificAdapter` TypeScript contract only.
+Adapters implement `ScientificAdapter` and never invent scientific payloads.
 
-There are **no live integrations** for SPRITE, BLAST, InterPro, CLEAN, Dali,
-Foldseek, SwissDock, RCSB, or any other scientific service.
+## Implemented
 
-Unimplemented adapters throw `ScientificAdapterNotImplementedError` and must
-never return fabricated scientific payloads.
+- **RCSB PDB Data API** (`src/adapters/rcsb/`) — entry + polymer entity
+  metadata for Phase 2 PDB Setup. Free public REST endpoints under
+  `https://data.rcsb.org/rest/v1/core/`.
+
+## Not implemented
+
+SPRITE, BLAST, InterPro, CLEAN, Dali, Foldseek, SwissDock, and any other
+scientific service. Unimplemented adapters must throw
+`ScientificAdapterNotImplementedError` rather than returning fabricated
+results.

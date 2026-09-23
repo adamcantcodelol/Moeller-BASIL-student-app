@@ -12,3 +12,6 @@ coverage
 .DS_Store
 tsconfig.tsbuildinfo
 worker-configuration.d.ts
+.dev.vars
+.dev.vars.*
+!.dev.vars.example

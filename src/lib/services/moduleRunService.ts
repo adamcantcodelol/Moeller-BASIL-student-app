@@ -20,6 +20,13 @@ export async function completePdbSetup(
     );
   }
 
+  if (structure.source !== "rcsb" || !structure.retrievedAt) {
+    throw new ServiceError(
+      "Retrieve verified RCSB metadata before completing Protein / PDB Setup. The platform will not invent structure metadata.",
+      400,
+    );
+  }
+
   const run = await getModuleRun(db, projectId, PDB_SETUP_MODULE_ID);
   if (!run) {
     throw new ServiceError("PDB Setup module run is missing.", 500);

@@ -9,9 +9,12 @@ Phase 1 foundation is implemented: project shell, routing, D1 schema,
 curriculum registry 00–11, PDB identifier validation, notes, demo data, and
 placeholder module pages.
 
-Not implemented yet: Mol*, RCSB fetch, SPRITE, BLAST, InterPro, CLEAN, Dali,
-Foldseek, SwissDock, ShannonBot, or reports. Those modules are registered as
-placeholders and do not invent scientific results.
+Phase 2 (in progress / landing): RCSB PDB Data API adapter, structure
+metadata persistence with provenance, and Mol* viewer for module 00.
+
+Not implemented yet: SPRITE, BLAST, InterPro, CLEAN, Dali, Foldseek,
+SwissDock, ShannonBot, reports, or Mol* active-site / overlay modes. Those
+modules are registered as placeholders and do not invent scientific results.
 
 ## What It Does
 
@@ -43,7 +46,7 @@ It should not hide the scientific reasoning.
 ## Core Features
 
 - PDB structure input
-- Mol* visualization (Phase 2)
+- Mol* visualization (Phase 2 — basic viewer)
 - BASIL curriculum workflow
 - scientific-service adapters (later phases)
 - result provenance

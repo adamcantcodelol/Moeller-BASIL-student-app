@@ -2,7 +2,7 @@
   "name": "moeller-basil",
   "version": "0.1.0",
   "private": true,
-  "description": "Moeller BASIL Protein Platform — educational bioinformatics workflow for Moeller High School",
+  "description": "Moeller BASIL Protein Platform \u2014 educational bioinformatics workflow for Moeller High School",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -15,7 +15,9 @@
     "db:migrate:local": "wrangler d1 migrations apply basil --local",
     "db:seed-demo": "tsx scripts/seed-demo.ts",
     "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
-    "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts"
+    "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
+    "deploy:build": "opennextjs-cloudflare build",
+    "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy"
   },
   "dependencies": {
     "@opennextjs/cloudflare": "^1.20.6",
@@ -38,5 +40,8 @@
     "typescript": "^6.0.3",
     "vitest": "^5.0.1",
     "wrangler": "^4.135.0"
+  },
+  "engines": {
+    "node": ">=22"
   }
 }
