@@ -115,6 +115,14 @@ export function normalizeSpritePayload(
 
   const totalResults = asNumber(results?.total_results);
 
+  // Best structural matches first (lowest RMSD). Hits without RMSD go last.
+  hits.sort((a, b) => {
+    if (a.rmsd === null && b.rmsd === null) return 0;
+    if (a.rmsd === null) return 1;
+    if (b.rmsd === null) return -1;
+    return a.rmsd - b.rmsd;
+  });
+
   return {
     pdbId: payload.pdbId,
     sessionId: payload.sessionId,

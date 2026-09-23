@@ -53,6 +53,53 @@ describe("normalizeSpritePayload", () => {
     expect(normalized.provenance.tool).toContain("SPRITE");
   });
 
+
+  it("sorts hits by ascending RMSD (best first, nulls last)", () => {
+    const payload: SpriteRawPayload = {
+      sessionId: "sess3",
+      strucId: "0",
+      pdbId: "4CHA",
+      database: "csa3",
+      celeryState: "COMPLETED",
+      sessionSnapshot: null,
+      results: {
+        total_results: 3,
+        matches: [
+          {
+            pdb_id: "high",
+            pattern_id: "a",
+            rmsd: 2.5,
+          },
+          {
+            pdb_id: "best",
+            pattern_id: "b",
+            rmsd: 0.4,
+          },
+          {
+            pdb_id: "mid",
+            pattern_id: "c",
+            rmsd: 1.2,
+          },
+          {
+            pdb_id: "none",
+            pattern_id: "d",
+            // rmsd omitted → null
+          },
+        ],
+      },
+    };
+    const normalized = normalizeSpritePayload(payload, {
+      retrievedAt: "2026-09-23T00:00:00.000Z",
+    });
+    expect(normalized.hits.map((h) => h.pdbId)).toEqual([
+      "best",
+      "mid",
+      "high",
+      "none",
+    ]);
+    expect(normalized.hits.map((h) => h.rmsd)).toEqual([0.4, 1.2, 2.5, null]);
+  });
+
   it("returns empty hits for a real empty matches array", () => {
     const payload: SpriteRawPayload = {
       sessionId: "sess2",

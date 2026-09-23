@@ -16,6 +16,72 @@ function formatResidues(
     .join(", ");
 }
 
+type SpriteHit = SpriteNormalizedSearch["hits"][number];
+
+type RmsdBand = {
+  id: string;
+  label: string;
+  hits: SpriteHit[];
+};
+
+/** Group already RMSD-sorted hits into classroom-friendly bands. */
+function groupHitsByRmsd(hits: SpriteHit[]): RmsdBand[] {
+  const bands: RmsdBand[] = [
+    { id: "lt1", label: "RMSD < 1.0 Å (very close)", hits: [] },
+    { id: "1to2", label: "RMSD 1.0–2.0 Å", hits: [] },
+    { id: "2to3", label: "RMSD 2.0–3.0 Å", hits: [] },
+    { id: "gt3", label: "RMSD ≥ 3.0 Å", hits: [] },
+    { id: "unknown", label: "RMSD not reported", hits: [] },
+  ];
+
+  for (const hit of hits) {
+    if (hit.rmsd === null) {
+      bands[4].hits.push(hit);
+    } else if (hit.rmsd < 1) {
+      bands[0].hits.push(hit);
+    } else if (hit.rmsd < 2) {
+      bands[1].hits.push(hit);
+    } else if (hit.rmsd < 3) {
+      bands[2].hits.push(hit);
+    } else {
+      bands[3].hits.push(hit);
+    }
+  }
+
+  return bands.filter((band) => band.hits.length > 0);
+}
+
+function HitsTable({ hits }: { hits: SpriteHit[] }) {
+  return (
+    <div className="table-wrap">
+      <table className="data-table">
+        <thead>
+          <tr>
+            <th>PDB</th>
+            <th>Pattern</th>
+            <th>Size</th>
+            <th>RMSD (Å)</th>
+            <th>Description</th>
+            <th>Match residues</th>
+          </tr>
+        </thead>
+        <tbody>
+          {hits.map((hit, index) => (
+            <tr key={`${hit.pdbId}-${hit.patternId ?? index}-${hit.rmsd ?? "na"}`}>
+              <td>{hit.pdbId}</td>
+              <td>{hit.patternId ?? "—"}</td>
+              <td>{hit.size ?? "—"}</td>
+              <td>{hit.rmsd ?? "—"}</td>
+              <td>{hit.description ?? "—"}</td>
+              <td>{formatResidues(hit.matchResidues)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 export function SpriteResults({
   normalized,
   jobs,
@@ -45,6 +111,8 @@ export function SpriteResults({
     );
   }
 
+  const bands = groupHitsByRmsd(normalized.hits);
+
   return (
     <div className="card">
       <h3>Normalized SPRITE matches</h3>
@@ -58,40 +126,23 @@ export function SpriteResults({
         {normalized.sessionId}
       </p>
       <p className="muted">
-        Source: {normalized.provenance.source} ·{" "}
-        {normalized.provenance.retrievedAt}
+        Organized by RMSD (lowest / best structural match first). Source:{" "}
+        {normalized.provenance.source} · {normalized.provenance.retrievedAt}
       </p>
       {normalized.hits.length === 0 ? (
         <p className="muted">
           SPRITE returned zero matches. That is a real empty result.
         </p>
       ) : (
-        <div className="table-wrap">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>PDB</th>
-                <th>Pattern</th>
-                <th>Size</th>
-                <th>RMSD</th>
-                <th>Description</th>
-                <th>Match residues</th>
-              </tr>
-            </thead>
-            <tbody>
-              {normalized.hits.map((hit, index) => (
-                <tr key={`${hit.pdbId}-${hit.patternId ?? index}`}>
-                  <td>{hit.pdbId}</td>
-                  <td>{hit.patternId ?? "—"}</td>
-                  <td>{hit.size ?? "—"}</td>
-                  <td>{hit.rmsd ?? "—"}</td>
-                  <td>{hit.description ?? "—"}</td>
-                  <td>{formatResidues(hit.matchResidues)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        bands.map((band) => (
+          <section key={band.id} className="sprite-rmsd-band">
+            <h4>
+              {band.label}{" "}
+              <span className="muted">({band.hits.length})</span>
+            </h4>
+            <HitsTable hits={band.hits} />
+          </section>
+        ))
       )}
     </div>
   );

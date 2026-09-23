@@ -334,3 +334,14 @@ select {
   max-height: 320px;
   overflow: auto;
 }
+
+.sprite-rmsd-band {
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--line);
+}
+
+.sprite-rmsd-band h4 {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+}
