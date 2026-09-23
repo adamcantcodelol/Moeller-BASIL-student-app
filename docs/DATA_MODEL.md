@@ -152,3 +152,42 @@ Fields:
 - type
 - fileReference
 - createdAt
+
+## ScientificJob
+
+Tracks one adapter or import execution linked to a module run.
+
+Fields:
+
+- id
+- moduleRunId
+- tool
+- status (`queued` | `running` | `succeeded` | `failed` | `awaiting_import`)
+- mode (`adapter` | `import`)
+- parameters
+- error
+- cacheHit
+- resultId (nullable; points at stored raw result)
+- startedAt
+- finishedAt
+- createdAt
+- updatedAt
+
+Curriculum `ModuleRun.status` values remain as documented above. Job status is
+the execution-state machine; module runs stay not_available_yet until a module
+is implemented.
+
+## AdapterResponseCache
+
+Legitimate reuse of external responses (never used to invent missing science).
+
+Fields:
+
+- cacheKey
+- tool
+- requestFingerprint
+- responseJson
+- retrievedAt
+- expiresAt
+- provenanceJson
+
