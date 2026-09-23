@@ -120,9 +120,10 @@ export const CURRICULUM_MODULES: readonly BasilModuleDefinition[] = [
     name: "Hypothesis Builder",
     description: "Write a student-authored, evidence-linked hypothesis.",
     purpose: "The student writes the hypothesis; the app does not write it for them.",
-    instructions: "This module is registered but not implemented.",
+    instructions:
+      "Draft and revise your own hypothesis using recorded evidence. The platform reviews structure but never authors the claim.",
     order: 9,
-    implemented: false,
+    implemented: true,
   },
   {
     id: "shannonbot-review",
@@ -132,9 +133,9 @@ export const CURRICULUM_MODULES: readonly BasilModuleDefinition[] = [
     description: "Discuss reasoning with the Socratic AI mentor.",
     purpose: "Guide students back to actual evidence.",
     instructions:
-      "ShannonBot is not implemented in Phase 1 and will not fabricate results.",
+      "Chat with ShannonBot about your recorded evidence and hypothesis. Local Socratic mode works without an API key; optional free-tier LLM keys can be added later. Results are never fabricated.",
     order: 10,
-    implemented: false,
+    implemented: true,
   },
   {
     id: "reports",
@@ -143,9 +144,10 @@ export const CURRICULUM_MODULES: readonly BasilModuleDefinition[] = [
     name: "Reports",
     description: "Generate reproducible student and teacher reports.",
     purpose: "Document what was done and what evidence was obtained.",
-    instructions: "Report generation is not implemented in Phase 1.",
+    instructions:
+      "Generate markdown reports from stored project data only. Reports never invent scientific results.",
     order: 11,
-    implemented: false,
+    implemented: true,
   },
 ];
 

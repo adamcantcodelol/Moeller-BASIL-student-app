@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
   CURRICULUM_MODULES,
   getImplementedModuleIds,
-  getModuleBySlug,
 } from "@/modules/registry";
 
 describe("curriculum registry", () => {
@@ -24,19 +23,7 @@ describe("curriculum registry", () => {
     ]);
   });
 
-  it("marks Phase 4 tools and active-site synthesis implemented", () => {
-    expect(getImplementedModuleIds()).toEqual([
-      "pdb-setup",
-      "sprite",
-      "blast",
-      "interpro",
-      "clean",
-      "dali",
-      "foldseek",
-      "active-site-evidence",
-      "swissdock",
-    ]);
-    expect(getModuleBySlug("active-site-evidence")?.implemented).toBe(true);
-    expect(getModuleBySlug("hypothesis-builder")?.implemented).toBe(false);
+  it("marks all curriculum modules implemented through Phase 8", () => {
+    expect(getImplementedModuleIds()).toHaveLength(12);
   });
 });

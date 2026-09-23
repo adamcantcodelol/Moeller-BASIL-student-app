@@ -53,12 +53,12 @@ describe("moduleRunService", () => {
     vi.unstubAllGlobals();
   });
 
-  it("keeps later-phase modules unavailable until implemented", async () => {
+  it("opens all curriculum modules as not_started once implemented", async () => {
     const db = await createTestDatabase();
     const project = await createProject(db, { name: "Phase guard" });
     const blast = await getModuleRun(db, project.id, "blast");
     const hypothesis = await getModuleRun(db, project.id, "hypothesis-builder");
     expect(blast?.status).toBe("not_started");
-    expect(hypothesis?.status).toBe("not_available_yet");
+    expect(hypothesis?.status).toBe("not_started");
   });
 });

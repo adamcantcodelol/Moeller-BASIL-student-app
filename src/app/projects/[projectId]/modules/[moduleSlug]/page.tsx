@@ -12,13 +12,19 @@ import {
   listEvidenceForProject,
 } from "@/lib/services/evidenceService";
 import { generateChimeraXCommands } from "@/lib/chimerax/generateCommands";
+import { getHypothesisForProject } from "@/lib/services/hypothesisService";
+import { getShannonBotConversation } from "@/lib/services/shannonBotService";
+import { listReports } from "@/lib/services/reportService";
 import { getModuleBySlug, PDB_SETUP_MODULE_ID } from "@/modules/registry";
 import { PdbSetupModule } from "@/modules/pdb-setup/PdbSetupModule";
 import { InterProModule } from "@/modules/interpro/InterProModule";
 import { FoldseekModule } from "@/modules/foldseek/FoldseekModule";
 import { ImportToolModule } from "@/modules/import-tool/ImportToolModule";
-import { ActiveSiteEvidenceModule } from "@/modules/active-site-evidence/ActiveSiteEvidenceModule";
 import { IMPORT_MODULE_CONFIG } from "@/modules/import-tool/verificationNotes";
+import { ActiveSiteEvidenceModule } from "@/modules/active-site-evidence/ActiveSiteEvidenceModule";
+import { HypothesisBuilderModule } from "@/modules/hypothesis-builder/HypothesisBuilderModule";
+import { ShannonBotModule } from "@/modules/shannonbot-review/ShannonBotModule";
+import { ReportsModule } from "@/modules/reports/ReportsModule";
 import { UnavailableModule } from "@/modules/placeholders/UnavailableModule";
 import { getImportWorkflowForTool } from "@/adapters/registry";
 
@@ -103,6 +109,49 @@ export default async function ModulePage({
         pdbId={overview.structure?.pdbId ?? null}
       />
     );
+  } else if (definition.id === "hypothesis-builder") {
+    const [hypothesisPayload, evidence] = await Promise.all([
+      getHypothesisForProject(db, projectId),
+      listEvidenceForProject(db, projectId),
+    ]);
+    body = (
+      <HypothesisBuilderModule
+        projectId={projectId}
+        module={definition}
+        run={run}
+        notes={notes}
+        hypothesis={hypothesisPayload.hypothesis}
+        versions={hypothesisPayload.versions}
+        review={hypothesisPayload.review}
+        evidence={evidence}
+      />
+    );
+  } else if (definition.id === "shannonbot-review") {
+    const conversation = await getShannonBotConversation(db, projectId);
+    body = (
+      <ShannonBotModule
+        projectId={projectId}
+        module={definition}
+        run={run}
+        notes={notes}
+        messages={conversation.messages}
+        blocker={conversation.blocker}
+      />
+    );
+  } else if (definition.id === "reports") {
+    const reports = await listReports(db, projectId);
+    const student = reports.find((report) => report.type === "student")?.content ?? null;
+    const teacher = reports.find((report) => report.type === "teacher")?.content ?? null;
+    body = (
+      <ReportsModule
+        projectId={projectId}
+        module={definition}
+        run={run}
+        notes={notes}
+        initialStudent={student}
+        initialTeacher={teacher}
+      />
+    );
   } else if (definition.id in IMPORT_MODULE_CONFIG) {
     const config = IMPORT_MODULE_CONFIG[definition.id]!;
     const workflow = getImportWorkflowForTool(definition.id);
@@ -116,9 +165,7 @@ export default async function ModulePage({
         jobs={jobs}
         toolName={config.toolName}
         instructions={workflow?.instructions ?? config.instructions}
-        acceptedFormats={
-          workflow?.acceptedFormats ?? config.acceptedFormats
-        }
+        acceptedFormats={workflow?.acceptedFormats ?? config.acceptedFormats}
         verificationNote={config.verificationNote}
       />
     );
