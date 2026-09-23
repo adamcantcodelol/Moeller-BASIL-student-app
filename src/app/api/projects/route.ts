@@ -3,7 +3,10 @@ import { handleServiceError } from "@/lib/http";
 import { createProject, listProjects } from "@/lib/services/projectService";
 import { createProjectInputSchema } from "@/lib/validation/project";
 import { validatePdbId } from "@/lib/validation/pdbId";
-import { saveStudentPdbId } from "@/lib/services/structureService";
+import {
+  fetchAndSaveRcsbStructure,
+  saveStudentPdbId,
+} from "@/lib/services/structureService";
 
 export const dynamic = "force-dynamic";
 
@@ -45,6 +48,11 @@ export async function POST(request: Request) {
         return Response.json({ error: pdb.error, project }, { status: 400 });
       }
       await saveStudentPdbId(db, project.id, pdb.pdbId);
+      try {
+        await fetchAndSaveRcsbStructure(db, project.id, pdb.pdbId);
+      } catch {
+        // PDB id is saved; student can retry load from Protein / PDB Setup.
+      }
     }
 
     return Response.json({ project }, { status: 201 });
