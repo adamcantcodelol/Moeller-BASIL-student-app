@@ -48,11 +48,11 @@ export async function fetchJsonWithTimeout(
     );
   }
 
-  if (response.status === 404) {
+  if (response.status === 404 || response.status === 204) {
     throw new ScientificHttpError(
       "NOT_FOUND",
       `Resource not found at ${label}. No fabricated data was stored.`,
-      { httpStatus: 404 },
+      { httpStatus: response.status },
     );
   }
 

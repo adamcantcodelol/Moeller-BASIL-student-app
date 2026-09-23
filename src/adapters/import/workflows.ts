@@ -69,7 +69,7 @@ const IMPORT_WORKFLOWS: Record<string, ImportWorkflowDefinition> = {
   interpro: defineImportWorkflow(
     "interpro",
     ["json", "tsv", "text"],
-    "Export InterProScan / InterPro results from a legitimate source and import them here. Annotations are not invented.",
+    "If the live InterPro REST lookup fails, export InterProScan / InterPro results from a legitimate source and import them here. Annotations are not invented. Prefer the live UniProt accession lookup when available.",
   ),
   clean: defineImportWorkflow(
     "clean",

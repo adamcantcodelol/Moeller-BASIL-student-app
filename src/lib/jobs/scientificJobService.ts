@@ -298,12 +298,23 @@ export async function executeAdapterJob<TInput, TOutput, TNormalized>(
   try {
     let output: TOutput;
     let cacheHit = false;
+    let cachedProvenance: ReturnType<typeof options.adapter.getProvenance> | null =
+      null;
 
     if (options.useCache !== false) {
       const lookup = await lookupAdapterCache(db, options.tool, options.input);
       if (lookup.hit && lookup.entry) {
         output = parseCachedResponse<TOutput>(lookup.entry);
         cacheHit = true;
+        if (lookup.entry.provenanceJson) {
+          try {
+            cachedProvenance = JSON.parse(
+              lookup.entry.provenanceJson,
+            ) as ReturnType<typeof options.adapter.getProvenance>;
+          } catch {
+            cachedProvenance = null;
+          }
+        }
       } else {
         output = await options.adapter.run(options.input);
         await putAdapterCache(db, {
@@ -319,7 +330,7 @@ export async function executeAdapterJob<TInput, TOutput, TNormalized>(
     }
 
     const normalized = options.adapter.normalize(output);
-    const provenanceBase = options.adapter.getProvenance();
+    const provenanceBase = cachedProvenance ?? options.adapter.getProvenance();
     const timestamp = nowIso();
     const rawResultId = createId();
     const provenance = withRawResultId(provenanceBase, rawResultId);

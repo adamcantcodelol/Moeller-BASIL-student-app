@@ -49,9 +49,9 @@ export const CURRICULUM_MODULES: readonly BasilModuleDefinition[] = [
     description: "Identify domains, families, and signatures.",
     purpose: "Collect functional annotation evidence.",
     instructions:
-      "This module is registered but not implemented. The platform will not invent InterPro annotations.",
+      "Enter a UniProt accession and retrieve domain/family annotations from the free InterPro REST API. On failure, import a legitimate InterPro / InterProScan export. The platform will not invent annotations.",
     order: 3,
-    implemented: false,
+    implemented: true,
   },
   {
     id: "clean",

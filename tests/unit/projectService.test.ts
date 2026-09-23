@@ -18,7 +18,18 @@ describe("projectService", () => {
         ?.status,
     ).toBe("not_started");
     expect(
+      overview.moduleRuns.filter((run) => run.status === "not_started"),
+    ).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ moduleId: "pdb-setup" }),
+        expect.objectContaining({ moduleId: "interpro" }),
+      ]),
+    );
+    expect(
+      overview.moduleRuns.filter((run) => run.status === "not_started"),
+    ).toHaveLength(2);
+    expect(
       overview.moduleRuns.filter((run) => run.status === "not_available_yet"),
-    ).toHaveLength(11);
+    ).toHaveLength(10);
   });
 });

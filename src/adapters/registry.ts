@@ -3,12 +3,13 @@ import {
   type ScientificAdapter,
 } from "@/adapters/scientificAdapter";
 import { createRcsbDataAdapter } from "@/adapters/rcsb";
+import { createInterProDataAdapter } from "@/adapters/interpro";
 import type { ImportWorkflowDefinition } from "@/types/importWorkflow";
 import { getImportWorkflow } from "@/adapters/import/workflows";
 
 /**
  * Tools known to the platform.
- * Only RCSB has a live adapter in Phase 3; others are stubs or import-only.
+ * RCSB + InterPro are live; others are stubs or import-only.
  */
 export const SCIENTIFIC_TOOL_IDS = [
   "rcsb",
@@ -59,7 +60,7 @@ export const SCIENTIFIC_TOOL_REGISTRY: readonly ScientificToolRegistration[] = [
   {
     id: "interpro",
     displayName: "InterPro",
-    liveAdapter: false,
+    liveAdapter: true,
     importSupported: true,
     moduleId: "interpro",
   },
@@ -113,6 +114,14 @@ export function getScientificAdapter(
 
   if (registration.id === "rcsb" && registration.liveAdapter) {
     return createRcsbDataAdapter() as ScientificAdapter<
+      unknown,
+      unknown,
+      unknown
+    >;
+  }
+
+  if (registration.id === "interpro" && registration.liveAdapter) {
+    return createInterProDataAdapter() as ScientificAdapter<
       unknown,
       unknown,
       unknown

@@ -53,7 +53,11 @@ export async function ensureDemoProject(db: AppDatabase): Promise<void> {
       projectId: DEMO_PROJECT_ID,
       moduleId: module.id,
       status:
-        module.id === PDB_SETUP_MODULE_ID ? "complete" : "not_available_yet",
+        module.id === PDB_SETUP_MODULE_ID
+          ? "complete"
+          : module.implemented
+            ? "not_started"
+            : "not_available_yet",
       startedAt: module.id === PDB_SETUP_MODULE_ID ? timestamp : null,
       completedAt: module.id === PDB_SETUP_MODULE_ID ? timestamp : null,
       parametersJson: null,

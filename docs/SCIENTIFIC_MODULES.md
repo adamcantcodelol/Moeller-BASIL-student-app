@@ -1,27 +1,22 @@
 # Scientific Modules
 
-Phase 1–3 do not claim live scientific-service integrations beyond RCSB.
-
 ## Live
 
-- **RCSB PDB Data API** — used by Protein / PDB Setup (Phase 2)
+- **RCSB PDB Data API** — Protein / PDB Setup (Phase 2)
+- **InterPro REST API** — InterPro module (Phase 4): UniProt accession → domains / families / signatures with job + cache + provenance. Import fallback available when the API is flaky.
 
-## Placeholders / stubs (Phase 3)
+## Placeholders / stubs
 
-The following tools are registered with stub adapters that throw
+The following tools remain registered with stub adapters that throw
 `ScientificAdapterNotImplementedError`, plus optional import scaffolding:
 
 - SPRITE
-- BLAST
-- InterPro
+- BLAST (async NCBI polling unfit for Workers in Phase 4; import-only for now)
 - CLEAN
 - Dali
 - Foldseek
 - SwissDock
 
-No API endpoints have been invented for them.
-
-Before Phase 4 implements any adapter, the current legitimate mechanism must be
-verified (endpoint, auth, rate limits, terms, automation allowed). If
-verification fails, use the structured import workflow instead of fabricated
-results.
+Before implementing any remaining adapter, verify the legitimate mechanism
+(endpoint, auth, rate limits, terms, automation allowed). If verification fails,
+use the structured import workflow instead of fabricated results.
