@@ -40,8 +40,9 @@ Foundation:
 PDB Setup:
 
 - PDB validation
-- structure metadata
-- Mol*
+- RCSB structure metadata (Data API adapter)
+- Mol* basic viewer (no invented active sites)
+- See `docs/PHASE2.md`
 
 ### Phase 3
 
