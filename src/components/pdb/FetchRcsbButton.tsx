@@ -43,12 +43,12 @@ export function FetchRcsbButton({
           void onClick();
         }}
       >
-        {pending ? "Retrieving from RCSB…" : "Retrieve metadata from RCSB"}
+        {pending ? "Retrieving from RCSB…" : "Retry RCSB retrieve"}
       </button>
       <p className="muted">
-        Calls the free RCSB PDB Data API. On failure the platform keeps your
-        saved PDB ID and does not invent title, organism, sequence, or
-        active-site residues.
+        Usually automatic when you Save PDB ID. Use this only if the automatic
+        retrieve failed. Calls the free RCSB PDB Data API — nothing is invented
+        on failure.
       </p>
       {error ? <p className="error">{error}</p> : null}
     </div>

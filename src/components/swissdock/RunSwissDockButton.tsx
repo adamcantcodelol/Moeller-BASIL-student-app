@@ -16,9 +16,8 @@ export function RunSwissDockButton({
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
-  const [smiles, setSmiles] = useState("");
-  const [boxCenter, setBoxCenter] = useState("");
-  const [boxSize, setBoxSize] = useState("20_20_20");
+  const [smilesOverride, setSmilesOverride] = useState("");
+  const [showOverride, setShowOverride] = useState(false);
 
   async function poll(jobId: string) {
     for (let attempt = 0; attempt < 60; attempt += 1) {
@@ -54,26 +53,20 @@ export function RunSwissDockButton({
   }
 
   async function onClick() {
-    if (!smiles.trim() || !boxCenter.trim() || !boxSize.trim()) {
-      setError(
-        "SMILES, boxCenter (x_y_z), and boxSize (a_b_c) are required. Nothing is invented.",
-      );
-      return;
-    }
     setPending(true);
     setError(null);
-    setStatus("Submitting SwissDock (Vina) via Moeller Worker…");
+    setStatus(
+      "Submitting SwissDock (Vina) via Moeller Worker — extracting ligand from project PDB when needed…",
+    );
+    const body: Record<string, string> = {};
+    if (pdbId) body.pdbId = pdbId;
+    if (smilesOverride.trim()) body.smiles = smilesOverride.trim();
     const response = await fetch(
       `/api/projects/${projectId}/modules/swissdock`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          smiles: smiles.trim(),
-          boxCenter: boxCenter.trim(),
-          boxSize: boxSize.trim(),
-          ...(pdbId ? { pdbId } : {}),
-        }),
+        body: JSON.stringify(body),
       },
     );
     const payload = (await response.json()) as {
@@ -102,32 +95,6 @@ export function RunSwissDockButton({
 
   return (
     <div className="form-stack">
-      <label>
-        Ligand SMILES (required)
-        <input
-          value={smiles}
-          disabled={pending}
-          placeholder="e.g. CCO (ethanol) — use your curriculum ligand"
-          onChange={(e) => setSmiles(e.target.value)}
-        />
-      </label>
-      <label>
-        Box center x_y_z (required)
-        <input
-          value={boxCenter}
-          disabled={pending}
-          placeholder="e.g. 10.5_-3.0_22.1"
-          onChange={(e) => setBoxCenter(e.target.value)}
-        />
-      </label>
-      <label>
-        Box size a_b_c
-        <input
-          value={boxSize}
-          disabled={pending}
-          onChange={(e) => setBoxSize(e.target.value)}
-        />
-      </label>
       <button
         type="button"
         disabled={disabled || pending || !pdbId}
@@ -138,10 +105,38 @@ export function RunSwissDockButton({
         {pending ? "Running SwissDock…" : "Run SwissDock (Vina)"}
       </button>
       <p className="muted">
-        Worker uses SwissDock CLI REST on port 8443 (Vina path): preplig →
-        preptarget (RCSB PDB) → setparameters → startdock → checkstatus. Ligands
-        and boxes are never invented. Students stay on this site.
+        Uses your project PDB only. The Worker downloads the PDB from RCSB,
+        extracts a non-solvent HETATM ligand (e.g. HEM), looks up its SMILES on
+        RCSB chemcomp, and centers the box on that ligand. Ligands are never
+        invented. Students stay on this site.
       </p>
+      <button
+        type="button"
+        className="secondary"
+        disabled={pending}
+        onClick={() => setShowOverride((v) => !v)}
+      >
+        {showOverride
+          ? "Hide optional SMILES override"
+          : "PDB has no ligand? Optional SMILES"}
+      </button>
+      {showOverride ? (
+        <label>
+          Ligand SMILES override (only if PDB has no HETATM ligand)
+          <input
+            value={smilesOverride}
+            disabled={pending}
+            placeholder="Only when unavoidable — never invent"
+            onChange={(e) => setSmilesOverride(e.target.value)}
+          />
+        </label>
+      ) : null}
+      {!pdbId ? (
+        <p className="error">
+          Save a PDB ID in Protein / PDB Setup first (RCSB retrieve is
+          automatic).
+        </p>
+      ) : null}
       {status ? <p className="muted">{status}</p> : null}
       {error ? <p className="error">{error}</p> : null}
     </div>

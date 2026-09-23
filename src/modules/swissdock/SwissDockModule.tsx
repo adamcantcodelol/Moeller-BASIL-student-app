@@ -33,9 +33,10 @@ export function SwissDockModule({
       <section className="card">
         <h3>Live SwissDock (Vina)</h3>
         <p className="muted">
-          Runs SwissDock through this app&apos;s Worker. You must supply a real
-          ligand SMILES and docking box — nothing is invented. Docking stays
-          distinct from experimental structures.
+          Runs SwissDock through this app&apos;s Worker from your project PDB.
+          Ligand SMILES and box center come from HETATM + RCSB chemcomp when
+          present — nothing is invented. Docking stays distinct from
+          experimental structures.
         </p>
         <RunSwissDockButton projectId={projectId} pdbId={pdbId} />
       </section>

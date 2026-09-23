@@ -235,3 +235,17 @@ export async function fetchAndSaveRcsbStructure(
 
   return { structure, normalized };
 }
+
+/**
+ * Student path: enter PDB ID once — Worker saves it and retrieves RCSB
+ * metadata/sequence in the same action. Does not invent fields if RCSB fails.
+ */
+export async function savePdbIdWithAutoRcsb(
+  db: AppDatabase,
+  projectId: string,
+  rawPdbId: string,
+): Promise<FetchRcsbResult> {
+  await saveStudentPdbId(db, projectId, rawPdbId);
+  return fetchAndSaveRcsbStructure(db, projectId, rawPdbId);
+}
+

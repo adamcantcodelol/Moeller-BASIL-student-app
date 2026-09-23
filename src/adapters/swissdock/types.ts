@@ -5,12 +5,15 @@ export const SWISSDOCK_PROVENANCE_SOURCE = "https://swissdock.ch";
 
 export interface SwissDockFetchInput {
   pdbId: string;
-  /** Required ligand SMILES — never invented. */
-  smiles: string;
-  /** Box center x_y_z */
-  boxCenter: string;
-  /** Box size a_b_c */
-  boxSize: string;
+  /**
+   * Optional override. When omitted, Worker extracts a HETATM ligand from the
+   * project PDB and looks up SMILES on RCSB chemcomp — never invented.
+   */
+  smiles?: string;
+  /** Optional override; defaults to ligand centroid from PDB. */
+  boxCenter?: string;
+  /** Box size a_b_c (default 20_20_20). */
+  boxSize?: string;
   /** Exhaustiveness for Vina (default 8 for school). */
   exhaustiveness?: number;
 }

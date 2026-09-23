@@ -109,7 +109,7 @@ export const CURRICULUM_MODULES: readonly BasilModuleDefinition[] = [
     description: "Investigate ligand docking.",
     purpose: "Collect docking observations distinct from experimental structures.",
     instructions:
-      "Run live SwissDock (Vina) from this page — provide ligand SMILES and box center/size (never invented). Worker uses swissdock.ch:8443. Import remains optional fallback if :8443 is unreachable. Poses stay distinct from experimental structures.",
+      "Run live SwissDock (Vina) from this page using your project PDB only. Worker extracts a HETATM ligand + RCSB chemcomp SMILES and centers the box (never invents ligands). Optional SMILES only if the PDB has no ligand. Import remains optional fallback if :8443 is unreachable.",
     order: 8,
     implemented: true,
   },

@@ -17,7 +17,10 @@ export function PdbIdForm({ projectId, currentPdbId }: { projectId: string; curr
     });
     const payload = (await response.json()) as { error?: string };
     if (!response.ok) {
-      action.fail(payload.error ?? "Could not save the PDB identifier.");
+      action.fail(
+        payload.error ??
+          "Could not save PDB ID / retrieve RCSB metadata. Nothing was invented.",
+      );
       return;
     }
     action.flashSuccess();
@@ -25,9 +28,9 @@ export function PdbIdForm({ projectId, currentPdbId }: { projectId: string; curr
   }
 
   const label = action.pending
-    ? "Loading from RCSB…"
+    ? "Saving + retrieving RCSB…"
     : action.success
-      ? "Loaded ✓"
+      ? "Saved ✓"
       : "Save PDB ID";
 
   return (
@@ -39,9 +42,9 @@ export function PdbIdForm({ projectId, currentPdbId }: { projectId: string; curr
     >
       <h3>Inputs</h3>
       <p className="muted">
-        Enter your PDB ID once. The app loads sequence and metadata from RCSB
-        automatically so later modules (BLAST, Foldseek, SPRITE, …) can run
-        with one click.
+        Enter only a PDB ID. Saving retrieves title, organism, chains, and
+        sequence from RCSB automatically so later modules (BLAST, Dali, …) can
+        run without paste.
       </p>
       <label>
         PDB identifier
@@ -63,7 +66,7 @@ export function PdbIdForm({ projectId, currentPdbId }: { projectId: string; curr
       </button>
       <ActionStatus
         success={action.success}
-        successLabel="PDB saved and RCSB metadata loaded."
+        successLabel="PDB ID saved and RCSB metadata retrieved."
         error={action.error}
       />
     </form>

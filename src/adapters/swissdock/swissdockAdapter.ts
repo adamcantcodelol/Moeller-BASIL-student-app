@@ -9,6 +9,10 @@ import {
   type SwissDockNormalizedSearch,
   type SwissDockRawPayload,
 } from "@/adapters/swissdock/types";
+import {
+  extractLigandFromPdbText,
+  parseChemCompSmiles,
+} from "@/adapters/swissdock/extractLigand";
 import { validatePdbId } from "@/lib/validation/pdbId";
 import { nowIso } from "@/lib/ids";
 import { buildProvenance } from "@/lib/provenance/buildProvenance";
@@ -102,51 +106,113 @@ export class SwissDockSearchAdapter
     });
   }
 
-  private validateInputs(input: SwissDockFetchInput) {
+  private validatePdb(input: SwissDockFetchInput) {
     const validation = validatePdbId(input.pdbId);
     if (!validation.ok) {
       throw new SwissDockAdapterError("VALIDATION", validation.error);
     }
-    const smiles = input.smiles.trim();
-    if (smiles.length < 2) {
+    return validation.pdbId;
+  }
+
+  private assertSmiles(smiles: string): string {
+    const trimmed = smiles.trim();
+    if (trimmed.length < 2) {
       throw new SwissDockAdapterError(
         "VALIDATION",
         "Ligand SMILES is required. The platform will not invent a ligand.",
       );
     }
-    if (!/^[A-Za-z0-9@+\-\[\]\(\)=#$:/\\.]+$/.test(smiles)) {
+    if (!/^[A-Za-z0-9@+\-\[\]\(\)=#$:/\\.]+$/.test(trimmed)) {
       throw new SwissDockAdapterError(
         "VALIDATION",
         "SMILES contains unexpected characters.",
       );
     }
-    const boxCenter = input.boxCenter.trim();
-    const boxSize = input.boxSize.trim();
-    if (!/^-?\d+(\.\d+)?_-?\d+(\.\d+)?_-?\d+(\.\d+)?$/.test(boxCenter)) {
+    return trimmed;
+  }
+
+  private assertBoxCenter(boxCenter: string): string {
+    const trimmed = boxCenter.trim();
+    if (!/^-?\d+(\.\d+)?_-?\d+(\.\d+)?_-?\d+(\.\d+)?$/.test(trimmed)) {
       throw new SwissDockAdapterError(
         "VALIDATION",
         "boxCenter must look like x_y_z (e.g. 10.0_5.0_-3.2). Do not invent coordinates.",
       );
     }
-    if (!/^\d+(\.\d+)?_\d+(\.\d+)?_\d+(\.\d+)?$/.test(boxSize)) {
+    return trimmed;
+  }
+
+  private assertBoxSize(boxSize: string): string {
+    const trimmed = boxSize.trim() || "20_20_20";
+    if (!/^\d+(\.\d+)?_\d+(\.\d+)?_\d+(\.\d+)?$/.test(trimmed)) {
       throw new SwissDockAdapterError(
         "VALIDATION",
         "boxSize must look like a_b_c (e.g. 20_20_20).",
       );
     }
-    return {
-      pdbId: validation.pdbId,
-      smiles,
-      boxCenter,
-      boxSize,
-      exhaust: input.exhaustiveness ?? 8,
-    };
+    return trimmed;
   }
 
   async run(input: SwissDockFetchInput): Promise<SwissDockRawPayload> {
-    const { pdbId, smiles, boxCenter, boxSize, exhaust } =
-      this.validateInputs(input);
+    const pdbId = this.validatePdb(input);
     const retrievedAt = nowIso();
+    const exhaust = input.exhaustiveness ?? 8;
+    const boxSize = this.assertBoxSize(input.boxSize ?? "20_20_20");
+
+    // Download PDB first so we can extract HETATM ligand when SMILES omitted.
+    const pdbRes = await this.fetchWithTimeout(
+      rcsbPdbUrl(pdbId),
+      undefined,
+      "RCSB PDB",
+    );
+    if (!pdbRes.ok) {
+      throw new SwissDockAdapterError(
+        "NETWORK",
+        `Could not download PDB ${pdbId} from RCSB for SwissDock.`,
+      );
+    }
+    const pdbText = await pdbRes.text();
+
+    let smiles = input.smiles?.trim() ?? "";
+    let boxCenter = input.boxCenter?.trim() ?? "";
+    let ligandResName: string | null = null;
+
+    const extracted = extractLigandFromPdbText(pdbText);
+    if (!boxCenter && extracted) {
+      boxCenter = extracted.boxCenter;
+    }
+    if (!smiles) {
+      if (!extracted) {
+        throw new SwissDockAdapterError(
+          "VALIDATION",
+          `No non-solvent HETATM ligand found in ${pdbId}. Provide a SMILES only if your curriculum ligand is not in the PDB. Nothing was invented.`,
+        );
+      }
+      ligandResName = extracted.resName;
+      const chemUrl = `https://data.rcsb.org/rest/v1/core/chemcomp/${encodeURIComponent(extracted.resName)}`;
+      const chemRes = await this.fetchWithTimeout(chemUrl, undefined, "RCSB chemcomp");
+      if (!chemRes.ok) {
+        throw new SwissDockAdapterError(
+          "NETWORK",
+          `Could not look up SMILES for ligand ${extracted.resName} on RCSB chemcomp.`,
+        );
+      }
+      const chemJson: unknown = await chemRes.json();
+      const lookedUp = parseChemCompSmiles(chemJson);
+      if (!lookedUp) {
+        throw new SwissDockAdapterError(
+          "INVALID_RESPONSE",
+          `RCSB chemcomp had no SMILES for ${extracted.resName}. Provide SMILES only as a last resort — nothing was invented.`,
+        );
+      }
+      smiles = lookedUp;
+      if (!boxCenter) {
+        boxCenter = extracted.boxCenter;
+      }
+    }
+
+    smiles = this.assertSmiles(smiles);
+    boxCenter = this.assertBoxCenter(boxCenter);
 
     // 1) preplig with Vina + SMILES
     const prepligUrl = `${SWISSDOCK_API_BASE}/preplig?Vina&mySMILES=${encodeURIComponent(smiles)}`;
@@ -169,20 +235,6 @@ export class SwissDockSearchAdapter
         "SwissDock preplig did not return a sessionNumber. No poses were invented.",
       );
     }
-
-    // 2) Download PDB from RCSB and preptarget
-    const pdbRes = await this.fetchWithTimeout(
-      rcsbPdbUrl(pdbId),
-      undefined,
-      "RCSB PDB",
-    );
-    if (!pdbRes.ok) {
-      throw new SwissDockAdapterError(
-        "NETWORK",
-        `Could not download PDB ${pdbId} from RCSB for SwissDock.`,
-      );
-    }
-    const pdbText = await pdbRes.text();
     const form = new FormData();
     form.append(
       "myTarget",
@@ -244,6 +296,7 @@ export class SwissDockSearchAdapter
         boxCenter,
         boxSize,
         exhaust,
+        ligandResName,
         phase: "docking",
         prepligSnippet: prepligText.slice(0, 200),
         preptargetSnippet: prepTargetText.slice(0, 200),

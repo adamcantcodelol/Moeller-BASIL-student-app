@@ -27,31 +27,38 @@ export async function POST(
 ) {
   try {
     const { projectId } = await context.params;
-    const body = (await request.json()) as {
-      smiles?: string;
-      boxCenter?: string;
-      boxSize?: string;
-      pdbId?: string;
-      exhaustiveness?: number;
-    };
-    if (!body.smiles || !body.boxCenter || !body.boxSize) {
-      return jsonError(
-        "Send { smiles, boxCenter, boxSize }. Ligands and boxes are never invented.",
-        400,
-      );
+    let smiles: string | undefined;
+    let boxCenter: string | undefined;
+    let boxSize: string | undefined;
+    let pdbId: string | undefined;
+    let exhaustiveness: number | undefined;
+    const contentType = request.headers.get("content-type") ?? "";
+    if (contentType.includes("application/json")) {
+      const body = (await request.json()) as {
+        smiles?: string;
+        boxCenter?: string;
+        boxSize?: string;
+        pdbId?: string;
+        exhaustiveness?: number;
+      };
+      smiles = body.smiles;
+      boxCenter = body.boxCenter;
+      boxSize = body.boxSize;
+      pdbId = body.pdbId;
+      exhaustiveness = body.exhaustiveness;
     }
     const db = await getRequestDatabase();
     const result = await submitSwissDock(db, projectId, {
-      smiles: body.smiles,
-      boxCenter: body.boxCenter,
-      boxSize: body.boxSize,
-      pdbId: body.pdbId,
-      exhaustiveness: body.exhaustiveness,
+      smiles,
+      boxCenter,
+      boxSize,
+      pdbId,
+      exhaustiveness,
     });
     return Response.json(result, { status: result.pending ? 202 : 200 });
   } catch (error) {
     if (error instanceof SyntaxError) {
-      return jsonError("Request body must be valid JSON.", 400);
+      return jsonError("Request body must be valid JSON when provided.", 400);
     }
     return handleServiceError(error);
   }

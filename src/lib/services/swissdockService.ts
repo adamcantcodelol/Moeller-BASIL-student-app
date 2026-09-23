@@ -107,10 +107,10 @@ async function persistSuccess(
 export async function submitSwissDock(
   db: AppDatabase,
   projectId: string,
-  options: {
-    smiles: string;
-    boxCenter: string;
-    boxSize: string;
+  options?: {
+    smiles?: string;
+    boxCenter?: string;
+    boxSize?: string;
     pdbId?: string;
     exhaustiveness?: number;
   },
@@ -118,21 +118,15 @@ export async function submitSwissDock(
   const project = await getProjectById(db, projectId);
   if (!project) throw new ServiceError("Project not found.", 404);
   const structure = await getStructureByProjectId(db, projectId);
-  const pdbInput = options.pdbId ?? structure?.pdbId;
+  const pdbInput = options?.pdbId ?? structure?.pdbId;
   if (!pdbInput) {
     throw new ServiceError(
-      "Save a PDB identifier before running SwissDock.",
+      "Save a PDB identifier (Protein / PDB Setup) before running SwissDock.",
       400,
     );
   }
   const validation = validatePdbId(pdbInput);
   if (!validation.ok) throw new ServiceError(validation.error, 400);
-  if (!options.smiles?.trim()) {
-    throw new ServiceError(
-      "Ligand SMILES is required. The platform will not invent a ligand.",
-      400,
-    );
-  }
 
   const run = await getModuleRun(db, projectId, SWISSDOCK_MODULE_ID);
   if (!run) throw new ServiceError("SwissDock module run is missing.", 500);
@@ -143,9 +137,10 @@ export async function submitSwissDock(
     mode: "adapter",
     parameters: {
       pdbId: validation.pdbId,
-      smiles: options.smiles.trim(),
-      boxCenter: options.boxCenter,
-      boxSize: options.boxSize,
+      smiles: options?.smiles?.trim() || null,
+      boxCenter: options?.boxCenter || null,
+      boxSize: options?.boxSize || "20_20_20",
+      autoLigand: !options?.smiles?.trim(),
     },
   });
   await markJobRunning(db, job.id);
@@ -154,10 +149,10 @@ export async function submitSwissDock(
   try {
     const raw = await adapter.run({
       pdbId: validation.pdbId,
-      smiles: options.smiles,
-      boxCenter: options.boxCenter,
-      boxSize: options.boxSize,
-      exhaustiveness: options.exhaustiveness,
+      smiles: options?.smiles,
+      boxCenter: options?.boxCenter,
+      boxSize: options?.boxSize,
+      exhaustiveness: options?.exhaustiveness,
     });
     const timestamp = nowIso();
     await db
@@ -165,9 +160,9 @@ export async function submitSwissDock(
       .set({
         parametersJson: JSON.stringify({
           pdbId: validation.pdbId,
-          smiles: options.smiles.trim(),
-          boxCenter: options.boxCenter,
-          boxSize: options.boxSize,
+          smiles: raw.smiles,
+          boxCenter: options?.boxCenter ?? null,
+          boxSize: options?.boxSize ?? "20_20_20",
           sessionNumber: raw.sessionNumber,
           phase: raw.phase,
         }),

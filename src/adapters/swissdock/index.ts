@@ -18,3 +18,9 @@ export {
   SWISSDOCK_API_BASE,
   SWISSDOCK_PROVENANCE_SOURCE,
 } from "@/adapters/swissdock/types";
+
+export {
+  extractLigandFromPdbText,
+  parseChemCompSmiles,
+} from "@/adapters/swissdock/extractLigand";
+export type { ExtractedLigand } from "@/adapters/swissdock/extractLigand";

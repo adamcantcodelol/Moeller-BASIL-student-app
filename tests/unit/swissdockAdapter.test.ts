@@ -4,29 +4,27 @@ import {
   SwissDockAdapterError,
 } from "@/adapters/swissdock";
 
-describe("SwissDockSearchAdapter", () => {
-  it("requires SMILES and valid box", async () => {
-    const adapter = createSwissDockSearchAdapter({
-      fetchImpl: vi.fn() as unknown as typeof fetch,
-    });
-    await expect(
-      adapter.run({
-        pdbId: "4HHB",
-        smiles: "",
-        boxCenter: "1_2_3",
-        boxSize: "20_20_20",
-      }),
-    ).rejects.toMatchObject({ code: "VALIDATION" });
-  });
+const PDB_WITH_HEM = `HEADER    TEST
+HETATM    1  FE  HEM A 142      10.000  20.000  30.000  1.00 10.00           FE
+HETATM    2  CHA HEM A 142      11.000  21.000  31.000  1.00 10.00           C
+ATOM      3  N   ALA A   1      1.000   2.000   3.000  1.00 10.00           N
+END
+`;
 
-  it("runs preplig→target→params→start and returns pending", async () => {
+describe("SwissDockSearchAdapter", () => {
+  it("auto-extracts HEM ligand + chemcomp SMILES and returns pending", async () => {
     const fetchImpl = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
+      if (url.includes("files.rcsb.org")) {
+        return new Response(PDB_WITH_HEM, { status: 200 });
+      }
+      if (url.includes("/chemcomp/HEM")) {
+        return Response.json({
+          rcsb_chem_comp_descriptor: { SMILES: "CCO" },
+        });
+      }
       if (url.includes("/preplig")) {
         return new Response("Session number: 999\nPrepared.", { status: 200 });
-      }
-      if (url.includes("files.rcsb.org")) {
-        return new Response("ATOM      1\n", { status: 200 });
       }
       if (url.includes("/preptarget") && init?.method === "POST") {
         return new Response("target ok", { status: 200 });
@@ -45,15 +43,27 @@ describe("SwissDockSearchAdapter", () => {
     const adapter = createSwissDockSearchAdapter({
       fetchImpl: fetchImpl as typeof fetch,
     });
-    const raw = await adapter.run({
-      pdbId: "4HHB",
-      smiles: "CCO",
-      boxCenter: "10_0_5",
-      boxSize: "20_20_20",
-    });
+    const raw = await adapter.run({ pdbId: "4HHB" });
     expect(raw.sessionNumber).toBe("999");
     expect(raw.phase).toBe("docking");
+    expect(raw.smiles).toBe("CCO");
     expect(raw.resultsText).toBeNull();
+  });
+
+  it("errors when PDB has no ligand and no SMILES override", async () => {
+    const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("files.rcsb.org")) {
+        return new Response("ATOM 1 N ALA A 1 1 2 3\nEND\n", { status: 200 });
+      }
+      return new Response("no", { status: 404 });
+    });
+    const adapter = createSwissDockSearchAdapter({
+      fetchImpl: fetchImpl as typeof fetch,
+    });
+    await expect(adapter.run({ pdbId: "1CRN" })).rejects.toMatchObject({
+      code: "VALIDATION",
+    });
   });
 
   it("pollSession throws PENDING when not allowPending", async () => {
