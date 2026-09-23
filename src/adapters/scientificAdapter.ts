@@ -1,4 +1,6 @@
 import type { Provenance } from "@/types/provenance";
+import { ScientificError } from "@/adapters/errors";
+import { buildProvenance } from "@/lib/provenance/buildProvenance";
 
 export interface ScientificAdapter<TInput, TOutput, TNormalized> {
   run(input: TInput): Promise<TOutput>;
@@ -6,11 +8,10 @@ export interface ScientificAdapter<TInput, TOutput, TNormalized> {
   getProvenance(): Provenance;
 }
 
-export class ScientificAdapterNotImplementedError extends Error {
-  readonly code = "SCIENTIFIC_ADAPTER_NOT_IMPLEMENTED" as const;
-
+export class ScientificAdapterNotImplementedError extends ScientificError {
   constructor(toolName: string) {
     super(
+      "NOT_IMPLEMENTED",
       `${toolName} is not implemented in this phase. The platform will not invent results.`,
     );
     this.name = "ScientificAdapterNotImplementedError";
@@ -28,14 +29,14 @@ export function createNotImplementedAdapter(
       throw new ScientificAdapterNotImplementedError(toolName);
     },
     getProvenance(): Provenance {
-      return {
+      return buildProvenance({
         tool: toolName,
         source: "not_implemented",
         retrievedAt: "",
         parameters: {},
         rawResultId: null,
         version: null,
-      };
+      });
     },
   };
 }
