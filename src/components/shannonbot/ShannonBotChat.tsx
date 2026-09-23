@@ -8,16 +8,25 @@ export function ShannonBotChat({
   projectId,
   initialMessages,
   blocker,
+  mode,
+  notice,
+  provider,
 }: {
   projectId: string;
   initialMessages: ShannonBotMessage[];
   blocker: string | null;
+  mode: "local" | "llm";
+  notice: string | null;
+  provider: string | null;
 }) {
   const router = useRouter();
   const [messages, setMessages] = useState(initialMessages);
   const [input, setInput] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [activeMode, setActiveMode] = useState(mode);
+  const [activeNotice, setActiveNotice] = useState(notice);
+  const [activeProvider, setActiveProvider] = useState(provider);
 
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -34,6 +43,10 @@ export function ShannonBotChat({
     const payload = (await response.json()) as {
       error?: string;
       messages?: ShannonBotMessage[];
+      mode?: "local" | "llm";
+      notice?: string | null;
+      provider?: string | null;
+      blocker?: string | null;
     };
     setPending(false);
     if (!response.ok) {
@@ -41,6 +54,9 @@ export function ShannonBotChat({
       return;
     }
     setMessages(payload.messages ?? []);
+    if (payload.mode) setActiveMode(payload.mode);
+    setActiveNotice(payload.notice ?? null);
+    setActiveProvider(payload.provider ?? null);
     setInput("");
     router.refresh();
   }
@@ -52,7 +68,16 @@ export function ShannonBotChat({
         Socratic mentor grounded in recorded evidence. It will not invent
         residues or tool results.
       </p>
+      <p className="muted">
+        Mode:{" "}
+        <strong>
+          {activeMode === "llm"
+            ? `LLM (${activeProvider ?? "configured provider"})`
+            : "Local Socratic (no cloud call)"}
+        </strong>
+      </p>
       {blocker ? <p className="muted">{blocker}</p> : null}
+      {activeNotice ? <p className="muted">{activeNotice}</p> : null}
       <div className="chat-log">
         {messages.length === 0 ? (
           <p className="muted">Ask ShannonBot about your evidence or hypothesis.</p>

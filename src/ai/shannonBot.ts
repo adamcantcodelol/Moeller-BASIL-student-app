@@ -1,3 +1,4 @@
+import type { LlmChatMessage } from "@/ai/providers/types";
 import type { Evidence } from "@/types/evidence";
 import type { Hypothesis } from "@/types/hypothesis";
 
@@ -34,7 +35,8 @@ function summarizeEvidence(evidence: Evidence[]): string {
 
 /**
  * Deterministic free mentor. Uses only provided context — never invents residues
- * or tool hits. Optional cloud LLM can wrap this later when John provides a key.
+ * or tool hits. Optional cloud LLM uses the same system prompt; on failure we
+ * fall back here.
  */
 export function generateShannonBotReply(
   studentMessage: string,
@@ -82,4 +84,22 @@ export function buildShannonBotSystemPrompt(context: ShannonBotContext): string 
     "",
     `Hypothesis: ${context.hypothesis?.text ?? "(none saved)"}`,
   ].join("\n");
+}
+
+/** Map stored conversation turns into OpenAI-compatible chat messages. */
+export function toLlmMessages(
+  history: ShannonBotMessage[],
+  systemPrompt: string,
+  latestStudentMessage: string,
+): LlmChatMessage[] {
+  const messages: LlmChatMessage[] = [{ role: "system", content: systemPrompt }];
+  for (const turn of history.slice(-8)) {
+    if (turn.role === "student") {
+      messages.push({ role: "user", content: turn.content });
+    } else if (turn.role === "shannonbot") {
+      messages.push({ role: "assistant", content: turn.content });
+    }
+  }
+  messages.push({ role: "user", content: latestStudentMessage });
+  return messages;
 }

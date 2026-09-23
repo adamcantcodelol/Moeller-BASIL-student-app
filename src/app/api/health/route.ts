@@ -4,6 +4,6 @@ export async function GET() {
   return Response.json({
     ok: true,
     application: "Moeller BASIL Protein Platform",
-    phase: 1,
+    phase: 9,
   });
 }

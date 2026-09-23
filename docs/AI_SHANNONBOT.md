@@ -2,113 +2,70 @@
 
 ## Purpose
 
-ShannonBot is an educational AI mentor.
+ShannonBot is an educational AI mentor for Moeller BASIL students.
 
-It is designed to help students think through computational biology results
-rather than simply provide answers.
+It helps students think through computational biology results rather than
+simply providing answers.
 
-## Teaching Philosophy
+## Modes
 
-The system should behave like a strong research teacher.
+### 1. Local Socratic (default, no API key)
 
-It should encourage:
+Deterministic mentor in `src/ai/shannonBot.ts`.
 
-- observation
-- evidence
-- questioning
-- comparison
-- hypothesis testing
-- revision
+- Uses only recorded evidence + saved hypothesis context
+- Never invents residues, literature, or tool outputs
+- Works at $0 with no external LLM
 
-## Interaction Pattern
+### 2. Optional free-tier LLM (Groq / OpenRouter)
 
-Student:
+Server-side adapters in `src/ai/providers/`:
 
-"I think residue 143 is important."
+| Env var | Provider | Notes |
+| --- | --- | --- |
+| `GROQ_API_KEY` | Groq | Preferred; OpenAI-compatible chat |
+| `OPENROUTER_API_KEY` | OpenRouter | Alternate free-tier route |
+| `SHANNONBOT_API_KEY` | Groq alias | Accepted when `GROQ_API_KEY` is unset |
+| `SHANNONBOT_PROVIDER` | `groq` \| `openrouter` | Optional preference |
+| `GROQ_MODEL` / `OPENROUTER_MODEL` / `SHANNONBOT_MODEL` | model id | Optional overrides |
 
-ShannonBot:
+Defaults:
 
-"What evidence from the previous modules led you to residue 143?"
+- Groq: `llama-3.1-8b-instant`
+- OpenRouter: `meta-llama/llama-3.1-8b-instruct:free`
 
-Then, if appropriate:
+Behavior:
 
-"Does that residue appear conserved among the proteins you compared?"
+1. If a key is present, ShannonBot tries the configured provider(s).
+2. On timeout, rate-limit (HTTP 429), network, or invalid response → **falls back to local Socratic**.
+3. Keys are read only on the server (`process.env` / Workers secrets). Never `NEXT_PUBLIC_*`.
 
-The bot should guide the student toward evidence.
+Set secrets for production:
 
-## Allowed Behavior
+```bash
+npx wrangler secret put GROQ_API_KEY
+# or
+npx wrangler secret put OPENROUTER_API_KEY
+```
 
-ShannonBot can:
+Local Wrangler: put values in `.dev.vars` (gitignored).
 
-- explain scientific concepts
-- summarize actual results
-- ask Socratic questions
-- identify contradictions
-- suggest what evidence to inspect
-- explain why a result matters
-- help students improve reasoning
-- evaluate whether a hypothesis is testable
+## Teaching philosophy
 
-## Prohibited Behavior
+ShannonBot should encourage observation, evidence, questioning, comparison,
+hypothesis testing, and revision.
+
+## Prohibited behavior
 
 ShannonBot must not:
 
 - fabricate scientific results
-- invent residues
-- invent literature
-- invent tool outputs
+- invent residues, literature, or tool outputs
 - write the student's final hypothesis
 - claim to have run an external tool when it did not
 - override actual computational results
 
-## Evidence Grounding
-
-Whenever possible, the AI prompt should contain structured evidence rather
-than only free-form text.
-
-For example:
-
-{
-  "module": "BLAST",
-  "finding": "...",
-  "source": "...",
-  "residues": [...]
-}
-
-The AI should cite module evidence in its explanation.
-
-## Hypothesis Review
-
-The student supplies:
-
-- hypothesis
-- supporting evidence
-- reasoning
-
-ShannonBot evaluates:
-
-- specificity
-- testability
-- evidence alignment
-- contradictions
-- missing evidence
-
-It should explain weaknesses without simply replacing the student's work.
-
-## Conversation Storage
-
-Store:
-
-- student message
-- AI response
-- referenced evidence
-- timestamp
-
-This allows the teacher report to show how the student reasoned through the
-project.
-
 ## Privacy
 
 Do not send unnecessary student information to AI providers.
-
-Avoid including personally identifiable information.
+Avoid personally identifiable information in prompts.

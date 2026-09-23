@@ -20,9 +20,9 @@ export const IMPORT_MODULE_CONFIG: Record<string, ImportModuleConfig> = {
     toolName: "BLAST",
     acceptedFormats: ["text", "json", "xml", "tsv"],
     instructions:
-      "Run NCBI BLAST (or another legitimate BLAST service), export the results, and import them here. Include email/tool parameters when using NCBI APIs yourself.",
+      "Student path: (1) Open https://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE=Proteins (2) Paste your project sequence or PDB-derived FASTA (3) Run blastp (4) Download/export the alignment (Text, JSON, XML, or TSV) (5) Paste or upload that raw export below. Do not paste fabricated hits. Optional: if you use NCBI's URL API yourself, wait ≥60s between RID polls and include tool+email parameters.",
     verificationNote:
-      "Verified: NCBI BLAST URL API is free but asynchronous (submit + poll RID no more than once per minute). That pattern does not fit a single Cloudflare Worker invocation cleanly, so Phase 4 uses hardened import.",
+      "Verified: NCBI BLAST is free, but the official URL API is asynchronous (submit + poll RID ≤1/min). That does not fit a single Cloudflare Worker request/time budget, so this classroom build uses a clear import workflow rather than scraping or ToS-violating automation.",
   },
   clean: {
     toolName: "CLEAN",

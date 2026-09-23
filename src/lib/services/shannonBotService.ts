@@ -3,31 +3,34 @@ import type { AppDatabase } from "@/db/client";
 import { aiConversations, moduleRuns } from "@/db/schema";
 import { createId, nowIso, parseJson } from "@/lib/ids";
 import { getProjectById } from "@/lib/db/queries/projects";
-import { getModuleRun } from "@/lib/db/queries/moduleRuns";
-import { listModuleRunsForProject } from "@/lib/db/queries/moduleRuns";
+import {
+  getModuleRun,
+  listModuleRunsForProject,
+} from "@/lib/db/queries/moduleRuns";
 import { ServiceError } from "@/lib/services/projectService";
 import { listEvidenceForProject } from "@/lib/services/evidenceService";
 import { getHypothesisForProject } from "@/lib/services/hypothesisService";
 import {
+  buildShannonBotSystemPrompt,
   generateShannonBotReply,
+  toLlmMessages,
   type ShannonBotMessage,
 } from "@/ai/shannonBot";
+import {
+  chatWithShannonBotProviders,
+  describeMissingAiKeys,
+  hasShannonBotApiKey,
+  readShannonBotEnvKeys,
+} from "@/ai/providers";
 
 export interface ShannonBotConversation {
   id: string;
   projectId: string;
   messages: ShannonBotMessage[];
   mode: "local" | "llm";
+  provider: string | null;
   blocker: string | null;
-}
-
-function readEnvKey(): string | null {
-  const key =
-    process.env.GROQ_API_KEY?.trim() ||
-    process.env.OPENROUTER_API_KEY?.trim() ||
-    process.env.SHANNONBOT_API_KEY?.trim() ||
-    null;
-  return key && key.length > 0 ? key : null;
+  notice: string | null;
 }
 
 export async function getShannonBotConversation(
@@ -43,10 +46,8 @@ export async function getShannonBotConversation(
     .from(aiConversations)
     .where(eq(aiConversations.projectId, projectId))
     .limit(1);
-  const key = readEnvKey();
-  const blocker = key
-    ? null
-    : "No free-tier AI API key configured (set GROQ_API_KEY or OPENROUTER_API_KEY server-side). ShannonBot is running in local Socratic mode and will not invent scientific results.";
+  const hasKey = hasShannonBotApiKey(readShannonBotEnvKeys());
+  const blocker = hasKey ? null : describeMissingAiKeys();
 
   if (rows.length === 0) {
     return {
@@ -54,7 +55,9 @@ export async function getShannonBotConversation(
       projectId,
       messages: [],
       mode: "local",
+      provider: null,
       blocker,
+      notice: null,
     };
   }
   return {
@@ -62,7 +65,9 @@ export async function getShannonBotConversation(
     projectId,
     messages: parseJson<ShannonBotMessage[]>(rows[0].messagesJson, []),
     mode: "local",
+    provider: null,
     blocker,
+    notice: null,
   };
 }
 
@@ -86,6 +91,55 @@ export async function sendShannonBotMessage(
     listModuleRunsForProject(db, projectId),
   ]);
 
+  const context = {
+    evidence,
+    hypothesis: hypothesisPayload.hypothesis,
+    moduleStatuses: moduleRunsList.map((run) => ({
+      moduleId: run.moduleId,
+      status: run.status,
+    })),
+  };
+
+  const existing = await db
+    .select()
+    .from(aiConversations)
+    .where(eq(aiConversations.projectId, projectId))
+    .limit(1);
+  const priorMessages =
+    existing.length === 0
+      ? []
+      : parseJson<ShannonBotMessage[]>(existing[0].messagesJson, []);
+
+  const keys = readShannonBotEnvKeys();
+  const hasKey = hasShannonBotApiKey(keys);
+  const localReply = generateShannonBotReply(text, context);
+
+  let replyContent = localReply;
+  let mode: "local" | "llm" = "local";
+  let provider: string | null = null;
+  let notice: string | null = null;
+  const blocker = hasKey ? null : describeMissingAiKeys();
+
+  if (hasKey) {
+    const llmResult = await chatWithShannonBotProviders(
+      {
+        messages: toLlmMessages(
+          priorMessages,
+          buildShannonBotSystemPrompt(context),
+          text,
+        ),
+      },
+      keys,
+    );
+    if (llmResult.ok) {
+      replyContent = llmResult.content;
+      mode = "llm";
+      provider = llmResult.provider;
+    } else {
+      notice = llmResult.message;
+    }
+  }
+
   const timestamp = nowIso();
   const studentMessage: ShannonBotMessage = {
     role: "student",
@@ -94,22 +148,9 @@ export async function sendShannonBotMessage(
   };
   const reply: ShannonBotMessage = {
     role: "shannonbot",
-    content: generateShannonBotReply(text, {
-      evidence,
-      hypothesis: hypothesisPayload.hypothesis,
-      moduleStatuses: moduleRunsList.map((run) => ({
-        moduleId: run.moduleId,
-        status: run.status,
-      })),
-    }),
+    content: replyContent,
     createdAt: nowIso(),
   };
-
-  const existing = await db
-    .select()
-    .from(aiConversations)
-    .where(eq(aiConversations.projectId, projectId))
-    .limit(1);
 
   let messages: ShannonBotMessage[];
   let id: string;
@@ -120,25 +161,17 @@ export async function sendShannonBotMessage(
       id,
       projectId,
       messagesJson: JSON.stringify(messages),
-      evidenceReferencesJson: JSON.stringify(
-        evidence.map((item) => item.id),
-      ),
+      evidenceReferencesJson: JSON.stringify(evidence.map((item) => item.id)),
       createdAt: timestamp,
     });
   } else {
     id = existing[0].id;
-    messages = [
-      ...parseJson<ShannonBotMessage[]>(existing[0].messagesJson, []),
-      studentMessage,
-      reply,
-    ];
+    messages = [...priorMessages, studentMessage, reply];
     await db
       .update(aiConversations)
       .set({
         messagesJson: JSON.stringify(messages),
-        evidenceReferencesJson: JSON.stringify(
-          evidence.map((item) => item.id),
-        ),
+        evidenceReferencesJson: JSON.stringify(evidence.map((item) => item.id)),
       })
       .where(eq(aiConversations.id, id));
   }
@@ -160,10 +193,10 @@ export async function sendShannonBotMessage(
     id,
     projectId,
     messages,
-    mode: "local",
-    blocker: readEnvKey()
-      ? null
-      : "No free-tier AI API key configured (set GROQ_API_KEY or OPENROUTER_API_KEY server-side). ShannonBot is running in local Socratic mode and will not invent scientific results.",
+    mode,
+    provider,
+    blocker,
+    notice,
   };
 }
 

@@ -47,20 +47,22 @@ export async function createProject(
     updatedAt: timestamp,
   });
 
-  await db.insert(moduleRuns).values(
-    CURRICULUM_MODULES.map((module) => ({
+  // Insert one row at a time — D1 rejects large multi-row inserts
+  // ("too many SQL variables").
+  for (const curriculumModule of CURRICULUM_MODULES) {
+    await db.insert(moduleRuns).values({
       id: createId(),
       projectId: id,
-      moduleId: module.id,
-      status: module.implemented ? "not_started" : "not_available_yet",
+      moduleId: curriculumModule.id,
+      status: curriculumModule.implemented ? "not_started" : "not_available_yet",
       startedAt: null,
       completedAt: null,
       parametersJson: null,
       error: null,
       createdAt: timestamp,
       updatedAt: timestamp,
-    })),
-  );
+    });
+  }
 
   const created = await getProjectById(db, id);
   if (!created) {

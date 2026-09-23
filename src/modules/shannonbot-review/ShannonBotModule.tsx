@@ -14,6 +14,9 @@ export function ShannonBotModule({
   notes,
   messages,
   blocker,
+  mode,
+  notice,
+  provider,
 }: {
   projectId: string;
   module: BasilModuleDefinition;
@@ -21,6 +24,9 @@ export function ShannonBotModule({
   notes: Note[];
   messages: ShannonBotMessage[];
   blocker: string | null;
+  mode: "local" | "llm";
+  notice: string | null;
+  provider: string | null;
 }) {
   return (
     <ModuleLayout module={module} run={run}>
@@ -28,6 +34,9 @@ export function ShannonBotModule({
         projectId={projectId}
         initialMessages={messages}
         blocker={blocker}
+        mode={mode}
+        notice={notice}
+        provider={provider}
       />
       <section className="card">
         <h3>Student observations</h3>
