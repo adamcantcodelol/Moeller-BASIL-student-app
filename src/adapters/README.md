@@ -2,30 +2,17 @@
 
 Adapters implement `ScientificAdapter` and never invent scientific payloads.
 
-## Implemented (live)
+## Live
 
-- **RCSB PDB Data API** (`src/adapters/rcsb/`) — entry + polymer entity
-  metadata for PDB Setup. Free public REST under `https://data.rcsb.org/rest/v1/core/`.
-- **InterPro REST API** (`src/adapters/interpro/`) — UniProt accession
-  annotations for the InterPro module. Free public REST under
-  `https://www.ebi.ac.uk/interpro/api/`. Uses Phase 3 jobs + response cache.
-  Import fallback remains available.
+- **RCSB** (`src/adapters/rcsb/`)
+- **InterPro** (`src/adapters/interpro/`) — UniProt accession lookup
+- **Foldseek** (`src/adapters/foldseek/`) — Search Server ticket + result
+
+## Import-only curriculum tools
+
+SPRITE, BLAST, CLEAN, Dali, SwissDock — see `docs/PHASE4.md` verification notes.
+Import scaffolding: `src/adapters/import/`.
 
 ## Infrastructure
 
-- `scientificAdapter.ts` — interface + not-implemented factory
-- `errors.ts` / `fetch.ts` — shared errors and timed JSON GET (404/204 → NOT_FOUND)
-- `registry.ts` — tool registration (live vs stub vs import)
-- `stubs/` — explicit stubs that throw `ScientificAdapterNotImplementedError`
-- `import/` — import workflow definitions + raw import storage
-- Jobs: `src/lib/jobs/scientificJobService.ts`
-- Cache: `src/lib/cache/adapterCache.ts`
-- Provenance: `src/lib/provenance/buildProvenance.ts`
-
-## Not implemented (do not claim)
-
-SPRITE, BLAST, CLEAN, Dali, Foldseek, SwissDock.
-
-Unimplemented adapters must throw `ScientificAdapterNotImplementedError` rather
-than returning fabricated results. Import scaffolding may store **raw** student
-files with provenance `source: "import"` after format validation only.
+Jobs, cache, provenance, stubs, shared `fetch.ts` (404/204 → NOT_FOUND).

@@ -53,10 +53,12 @@ describe("moduleRunService", () => {
     vi.unstubAllGlobals();
   });
 
-  it("does not mark unimplemented modules complete", async () => {
+  it("keeps later-phase modules unavailable until implemented", async () => {
     const db = await createTestDatabase();
-    const project = await createProject(db, { name: "BLAST guard" });
+    const project = await createProject(db, { name: "Phase guard" });
     const blast = await getModuleRun(db, project.id, "blast");
-    expect(blast?.status).toBe("not_available_yet");
+    const activeSite = await getModuleRun(db, project.id, "active-site-evidence");
+    expect(blast?.status).toBe("not_started");
+    expect(activeSite?.status).toBe("not_available_yet");
   });
 });

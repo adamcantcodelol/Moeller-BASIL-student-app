@@ -25,9 +25,9 @@ export const CURRICULUM_MODULES: readonly BasilModuleDefinition[] = [
     description: "Investigate structural and sequence relationships using SPRITE.",
     purpose: "Collect SPRITE evidence defined by the BASIL curriculum.",
     instructions:
-      "This module is registered but not implemented. The platform will not invent SPRITE results.",
+      "SPRITE has no verified free public API suitable for Cloudflare Workers. Run the BASIL-approved SPRITE workflow externally, then import the raw export. Results are never invented.",
     order: 1,
-    implemented: false,
+    implemented: true,
   },
   {
     id: "blast",
@@ -37,9 +37,9 @@ export const CURRICULUM_MODULES: readonly BasilModuleDefinition[] = [
     description: "Compare protein sequences using BLAST.",
     purpose: "Collect sequence homology evidence.",
     instructions:
-      "This module is registered but not implemented. The platform will not invent BLAST results.",
+      "NCBI BLAST is asynchronous (poll RID ≥60s) and does not fit a single Worker request. Run BLAST on NCBI (or equivalent), then import the raw export. Results are never invented.",
     order: 2,
-    implemented: false,
+    implemented: true,
   },
   {
     id: "interpro",
@@ -61,9 +61,9 @@ export const CURRICULUM_MODULES: readonly BasilModuleDefinition[] = [
     description: "Perform the CLEAN analysis defined by BASIL.",
     purpose: "Collect CLEAN results with provenance.",
     instructions:
-      "This module is registered but not implemented. The platform will not invent CLEAN results.",
+      "No verified free Worker-friendly CLEAN automation is claimed yet. Import legitimate CLEAN output. Results are never invented.",
     order: 4,
-    implemented: false,
+    implemented: true,
   },
   {
     id: "dali",
@@ -73,9 +73,9 @@ export const CURRICULUM_MODULES: readonly BasilModuleDefinition[] = [
     description: "Compare protein structures using Dali.",
     purpose: "Collect structural similarity evidence.",
     instructions:
-      "This module is registered but not implemented. The platform will not invent Dali matches.",
+      "The public Dali server is web-form oriented without a documented free REST submit API suitable for Workers. Run Dali externally and import the raw export. Results are never invented.",
     order: 5,
-    implemented: false,
+    implemented: true,
   },
   {
     id: "foldseek",
@@ -85,9 +85,9 @@ export const CURRICULUM_MODULES: readonly BasilModuleDefinition[] = [
     description: "Search for structural homologs using Foldseek.",
     purpose: "Collect rapid structural similarity evidence.",
     instructions:
-      "This module is registered but not implemented. The platform will not invent Foldseek hits.",
+      "Run a live Foldseek search against pdb100 using the project PDB (RCSB file download + search.foldseek.com API), or import a legitimate export if the API is unavailable. Hits are never invented.",
     order: 6,
-    implemented: false,
+    implemented: true,
   },
   {
     id: "active-site-evidence",
@@ -109,9 +109,9 @@ export const CURRICULUM_MODULES: readonly BasilModuleDefinition[] = [
     description: "Investigate ligand docking.",
     purpose: "Collect docking observations distinct from experimental structures.",
     instructions:
-      "This module is registered but not implemented. The platform will not invent docking poses.",
+      "SwissDock command-line API is multi-step and long-running (often minutes). Use swissdock.ch externally, then import raw output. Docking poses are never invented and remain distinct from experimental structures.",
     order: 8,
-    implemented: false,
+    implemented: true,
   },
   {
     id: "hypothesis-builder",

@@ -24,9 +24,18 @@ describe("curriculum registry", () => {
     ]);
   });
 
-  it("marks pdb-setup and interpro as implemented", () => {
-    expect(getImplementedModuleIds()).toEqual(["pdb-setup", "interpro"]);
-    expect(getModuleBySlug("blast")?.implemented).toBe(false);
-    expect(getModuleBySlug("interpro")?.implemented).toBe(true);
+  it("marks Phase 4 scientific tools implemented", () => {
+    expect(getImplementedModuleIds()).toEqual([
+      "pdb-setup",
+      "sprite",
+      "blast",
+      "interpro",
+      "clean",
+      "dali",
+      "foldseek",
+      "swissdock",
+    ]);
+    expect(getModuleBySlug("active-site-evidence")?.implemented).toBe(false);
+    expect(getModuleBySlug("foldseek")?.implemented).toBe(true);
   });
 });
