@@ -60,7 +60,7 @@ export function PdbSetupModule({
           <>
             <EmptyScientificPanel
               title="Raw results"
-              message="No external scientific result has been retrieved yet. Use Retrieve metadata from RCSB after saving a PDB ID."
+              message="No RCSB metadata yet. Save a PDB ID above — the app loads metadata and sequence automatically."
             />
             <EmptyScientificPanel
               title="Normalized results"
