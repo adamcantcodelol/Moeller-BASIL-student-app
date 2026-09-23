@@ -49,14 +49,29 @@ export function ImportToolModule({
       <div className="card">
         <EmptyScientificPanel
           title="Normalized results"
-          message={`Live normalized ${toolName} parsing is limited in this phase. Imported raw output is stored with provenance source=import. The platform will not invent hits.`}
+          message={`Live normalized ${toolName} parsing is limited. Imported raw output is stored with provenance source=import. The platform will not invent hits.`}
         />
         {latestJob?.status === "failed" && latestJob.error ? (
           <p className="error">Last job failed: {latestJob.error}</p>
         ) : null}
+        <h4>Import job history</h4>
+        {jobs.length === 0 ? (
+          <p className="muted">No import jobs yet for this module.</p>
+        ) : (
+          <ul>
+            {jobs.map((job) => (
+              <li key={job.id}>
+                <strong>{job.status}</strong> · {job.mode} · {job.tool}
+                {job.finishedAt ? ` · finished ${job.finishedAt}` : ""}
+                {job.error ? ` · error: ${job.error}` : ""}
+              </li>
+            ))}
+          </ul>
+        )}
         {hasSuccess ? (
           <p className="muted">
-            At least one successful import job is on record for this module.
+            At least one successful import is on record. You can mark the module
+            complete when your observations are ready.
           </p>
         ) : null}
       </div>

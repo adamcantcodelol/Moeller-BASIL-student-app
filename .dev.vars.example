@@ -1,1 +1,6 @@
 NEXTJS_ENV=development
+# Optional ShannonBot LLM (Wrangler local secrets). Never commit real keys.
+# GROQ_API_KEY=
+# OPENROUTER_API_KEY=
+# SHANNONBOT_API_KEY=
+# SHANNONBOT_PROVIDER=groq

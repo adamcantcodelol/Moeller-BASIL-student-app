@@ -1,6 +1,6 @@
 # AI / ShannonBot
 
-Local Socratic mentor is implemented (`src/ai/shannonBot.ts`).
-
-Optional free-tier LLM keys (server-side only): `GROQ_API_KEY`, `OPENROUTER_API_KEY`, or `SHANNONBOT_API_KEY`.
-Without a key, local mode runs and documents the blocker.
+- Local Socratic mentor: `src/ai/shannonBot.ts`
+- Optional LLM providers: `src/ai/providers/` (Groq + OpenRouter)
+- Keys: `GROQ_API_KEY` / `OPENROUTER_API_KEY` / `SHANNONBOT_API_KEY` (server-side only)
+- Without a key, or on provider failure, local mode runs and documents the blocker/notice

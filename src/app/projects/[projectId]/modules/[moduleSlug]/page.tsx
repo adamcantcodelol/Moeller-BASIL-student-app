@@ -136,6 +136,9 @@ export default async function ModulePage({
         notes={notes}
         messages={conversation.messages}
         blocker={conversation.blocker}
+        mode={conversation.mode}
+        notice={conversation.notice}
+        provider={conversation.provider}
       />
     );
   } else if (definition.id === "reports") {

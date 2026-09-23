@@ -2,56 +2,46 @@
 
 ## Goals
 
-The application should:
+- Remain available long-term at $0
+- GitHub for source control
+- Stable public URL students can open on school computers
+- Preserve student project data appropriately
 
-- remain available long-term
-- cost $0
-- use GitHub for source control
-- have a stable public URL students can open on school computers (no install)
-- preserve student project data appropriately
+## Recommended architecture
 
-## Recommended Architecture
+GitHub → Cloudflare Workers (`@opennextjs/cloudflare`) → D1 → optional R2
 
-GitHub
-  ↓
-Cloudflare Workers (`@opennextjs/cloudflare`)
-  ↓
-D1 Database
-  ↓
-Optional R2 Storage (not required for Phase 2)
+SSR Next.js deploys to Workers (not static-only Pages).
 
-SSR Next.js deploys to Workers, not static-only Pages.
+Scientific services run through server-side adapters. Mol* loads in the browser
+from jsDelivr + RCSB CDN (school network must allow those hosts).
 
-Scientific services are accessed through server-side adapters. Mol* loads in
-the browser from jsDelivr + RCSB file CDN (school network must allow those
-hosts).
+## Deploy blockers (John must complete)
 
-## Deploy blockers (as of Phase 2 work)
-
-1. **`wrangler.jsonc` still uses placeholder D1 `database_id`**
-   `00000000-0000-4000-8000-000000000001` — production needs a real D1 UUID.
-2. **Cloudflare account auth** — `wrangler whoami` must succeed (John must
-   run `npx wrangler login` or provide an API token).
-3. **Node.js ≥ 22** is required by current Wrangler / toolchain.
-4. **OpenNext production build** (`npx opennextjs-cloudflare build`) must be
-   run before `wrangler deploy`.
-5. **School network allowlist** (runtime, not deploy):
-   - `*.workers.dev` or custom domain for the app
+1. **Placeholder D1 `database_id` in `wrangler.jsonc`**
+   Currently `00000000-0000-4000-8000-000000000001` — replace with a real D1 UUID.
+2. **Cloudflare auth** — `npx wrangler login` (or API token) so `npx wrangler whoami` succeeds.
+3. **Node.js ≥ 22**
+4. **OpenNext build** before deploy: `npm run deploy:build`
+5. **Optional LLM secrets** (only if using cloud ShannonBot):
+   `npx wrangler secret put GROQ_API_KEY` and/or `OPENROUTER_API_KEY`
+6. **School network allowlist** (runtime):
+   - `*.workers.dev` or custom domain
    - `data.rcsb.org`, `files.rcsb.org`, `www.rcsb.org`
-   - `cdn.jsdelivr.net` (Mol* assets)
+   - `cdn.jsdelivr.net` (Mol*)
+   - Foldseek/InterPro hosts used by live adapters
+   - Optional LLM: `api.groq.com` and/or `openrouter.ai`
 
-No paid Cloudflare plan is required for Free-tier Workers + D1 Free.
+No paid Cloudflare plan is required for Free Workers + D1 Free.
 
-## Exact deploy steps (John must authenticate)
-
-Run from the repo root on a machine with Node 22+:
+## Exact deploy steps (John authenticates)
 
 ```bash
 # 0) Toolchain
 node -v   # >= 22
 npm install
 
-# 1) Authenticate Cloudflare (interactive browser or API token)
+# 1) Authenticate Cloudflare
 npx wrangler login
 npx wrangler whoami
 
@@ -64,55 +54,61 @@ npx wrangler d1 create basil
 npx wrangler d1 migrations apply basil --remote
 
 # 4) Seed labeled DEMO DATA project (remote)
-# Prefer a one-off remote seed once a seed script supports --remote,
-# or insert via `wrangler d1 execute basil --remote --file=...`.
-# Until then, use the in-app "Load demo" control after deploy if available.
+# Prefer in-app "Load demo" after deploy, or:
+# npx wrangler d1 execute basil --remote --file=...
+# Local seed equivalent:
+npm run db:seed-demo
 
-# 5) Build OpenNext worker bundle
-npx opennextjs-cloudflare build
+# 5) Optional ShannonBot LLM secrets
+npx wrangler secret put GROQ_API_KEY
+# and/or:
+# npx wrangler secret put OPENROUTER_API_KEY
 
-# 6) Deploy
-npx wrangler deploy
+# 6) Build OpenNext worker bundle
+npm run deploy:build
 
-# 7) Smoke-test the public URL
-# - open / 
+# 7) Deploy
+npm run deploy
+
+# 8) Smoke-test the public URL
+# - open /
 # - create a project, save PDB 4HHB, Retrieve from RCSB, confirm Mol*
 # - confirm DEMO DATA banner on demo project
+# - ShannonBot local mode works without secrets
 ```
 
-Optional: add a GitHub Action that runs build + `wrangler deploy` using
-`CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` repository secrets so
-pushes to `main` publish automatically. John must create those secrets.
+Optional: GitHub Action with `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID`
+repository secrets so pushes to `main` publish automatically. John must create those secrets.
 
-## Environment Variables
+## Environment variables
 
-Phase 2 needs **no paid API keys**. Production secrets (if any later) must
-live in Cloudflare Workers secrets — never in the client bundle, never in
-git.
+Core scientific modules need **no paid API keys**.
 
-Local-only files:
+Optional ShannonBot (server-side only; never `NEXT_PUBLIC_`):
 
-- `.dev.vars` (gitignored)
-- `.env*` (gitignored)
+- `GROQ_API_KEY`
+- `OPENROUTER_API_KEY`
+- `SHANNONBOT_API_KEY` (Groq alias)
+- `SHANNONBOT_PROVIDER`, `GROQ_MODEL`, `OPENROUTER_MODEL`, `SHANNONBOT_MODEL`
+
+Local-only files (gitignored): `.dev.vars`, `.env*`
+
+See `.env.example` and `docs/AI_SHANNONBOT.md`.
 
 ## Database
 
-Use migrations in `drizzle/`.
+Use migrations in `drizzle/`. Never change production schema without a migration.
 
-Never manually change production schema without a migration.
+## Public access
 
-## Public Access
+Do not expose service credentials, admin endpoints, internal logs, or private
+student information.
 
-The public site should not expose:
+## Demo mode
 
-- service credentials
-- administrative endpoints
-- internal logs
-- private student information
+Demonstration projects must be labeled **DEMO DATA**. Never silently substitute
+demo data for a failed real analysis.
 
-## Demo Mode
+## See also
 
-The site should have a demonstration project so visitors can understand the
-platform without running every scientific tool.
-
-Demo results must be explicitly labeled **DEMO DATA**.
+- `DEPLOY_READY.md` — short checklist of what John must do and what students unlock
