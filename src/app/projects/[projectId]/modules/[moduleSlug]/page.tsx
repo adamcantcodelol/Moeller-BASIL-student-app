@@ -7,6 +7,9 @@ import { listNotesForModule } from "@/lib/services/noteService";
 import { listInterProResults } from "@/lib/services/interproService";
 import { listFoldseekResults } from "@/lib/services/foldseekService";
 import { listSpriteResults } from "@/lib/services/spriteService";
+import { listBlastResults } from "@/lib/services/blastService";
+import { listDaliResults } from "@/lib/services/daliService";
+import { listSwissDockResults } from "@/lib/services/swissdockService";
 import { listModuleJobs } from "@/lib/services/importToolService";
 import {
   collectUniqueResidues,
@@ -23,6 +26,9 @@ import { PdbSetupModule } from "@/modules/pdb-setup/PdbSetupModule";
 import { InterProModule } from "@/modules/interpro/InterProModule";
 import { FoldseekModule } from "@/modules/foldseek/FoldseekModule";
 import { SpriteModule } from "@/modules/sprite/SpriteModule";
+import { BlastModule } from "@/modules/blast/BlastModule";
+import { DaliModule } from "@/modules/dali/DaliModule";
+import { SwissDockModule } from "@/modules/swissdock/SwissDockModule";
 import { ImportToolModule } from "@/modules/import-tool/ImportToolModule";
 import { IMPORT_MODULE_CONFIG } from "@/modules/import-tool/verificationNotes";
 import { ActiveSiteEvidenceModule } from "@/modules/active-site-evidence/ActiveSiteEvidenceModule";
@@ -102,6 +108,50 @@ export default async function ModulePage({
         notes={notes}
         normalized={sprite.latestNormalized}
         jobs={sprite.jobs}
+        pdbId={overview.structure?.pdbId ?? null}
+      />
+    );
+  } else if (definition.id === "blast") {
+    const blast = await listBlastResults(db, projectId);
+    const hasSequence = Boolean(
+      overview.structure?.sequence &&
+        overview.structure.sequence.replace(/[^A-Za-z]/g, "").length >= 10,
+    );
+    body = (
+      <BlastModule
+        projectId={projectId}
+        module={definition}
+        run={run}
+        notes={notes}
+        normalized={blast.latestNormalized}
+        jobs={blast.jobs}
+        hasSequence={hasSequence}
+      />
+    );
+  } else if (definition.id === "dali") {
+    const dali = await listDaliResults(db, projectId);
+    body = (
+      <DaliModule
+        projectId={projectId}
+        module={definition}
+        run={run}
+        notes={notes}
+        normalized={dali.latestNormalized}
+        jobs={dali.jobs}
+        pdbId={overview.structure?.pdbId ?? null}
+        defaultChain={overview.structure?.chains?.[0] ?? "A"}
+      />
+    );
+  } else if (definition.id === "swissdock") {
+    const swissdock = await listSwissDockResults(db, projectId);
+    body = (
+      <SwissDockModule
+        projectId={projectId}
+        module={definition}
+        run={run}
+        notes={notes}
+        normalized={swissdock.latestNormalized}
+        jobs={swissdock.jobs}
         pdbId={overview.structure?.pdbId ?? null}
       />
     );

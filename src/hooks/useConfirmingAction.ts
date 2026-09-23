@@ -16,18 +16,12 @@ export function useConfirmingAction(options?: {
   const successMs = options?.successMs ?? DEFAULT_SUCCESS_MS;
   const holdSuccess = options?.holdSuccess ?? false;
   const [pending, setPending] = useState(false);
-  const [success, setSuccess] = useState(holdSuccess);
+  const [flashedSuccess, setFlashedSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => {
-    if (holdSuccess) {
-      setSuccess(true);
-      return;
-    }
-    // When parent says no longer complete, drop sticky success.
-    setSuccess(false);
-  }, [holdSuccess]);
+  // Sticky green when parent says already complete — derived, no effect setState.
+  const success = holdSuccess || flashedSuccess;
 
   useEffect(() => {
     return () => {
@@ -46,22 +40,22 @@ export function useConfirmingAction(options?: {
     clearTimer();
     setPending(true);
     setError(null);
-    if (!holdSuccess) setSuccess(false);
+    if (!holdSuccess) setFlashedSuccess(false);
   }, [clearTimer, holdSuccess]);
 
   const flashSuccess = useCallback(() => {
     setPending(false);
-    setSuccess(true);
+    setFlashedSuccess(true);
     clearTimer();
     if (!holdSuccess) {
-      timerRef.current = setTimeout(() => setSuccess(false), successMs);
+      timerRef.current = setTimeout(() => setFlashedSuccess(false), successMs);
     }
   }, [clearTimer, holdSuccess, successMs]);
 
   const fail = useCallback(
     (message: string) => {
       setPending(false);
-      setSuccess(false);
+      setFlashedSuccess(false);
       setError(message);
       clearTimer();
     },

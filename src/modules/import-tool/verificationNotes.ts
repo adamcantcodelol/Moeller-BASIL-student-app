@@ -20,32 +20,32 @@ export const IMPORT_MODULE_CONFIG: Record<string, ImportModuleConfig> = {
     toolName: "BLAST",
     acceptedFormats: ["text", "json", "xml", "tsv"],
     instructions:
-      "Student path: (1) Open https://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE=Proteins (2) Paste your project sequence or PDB-derived FASTA (3) Run blastp (4) Download/export the alignment (Text, JSON, XML, or TSV) (5) Paste or upload that raw export below. Do not paste fabricated hits. Optional: if you use NCBI's URL API yourself, wait ≥60s between RID polls and include tool+email parameters.",
+      "Prefer the live Run BLAST button (Worker proxies NCBI BLAST Common URL API). Use this import only if live NCBI is unavailable. Paste or upload a legitimate BLAST export — do not paste fabricated hits.",
     verificationNote:
-      "Verified: NCBI BLAST is free, but the official URL API is asynchronous (submit + poll RID ≤1/min). That does not fit a single Cloudflare Worker request/time budget, so this classroom build uses a clear import workflow rather than scraping or ToS-violating automation.",
+      "Verified: NCBI BLAST Common URL API (CMD=Put/Get). Live path is Worker-proxied with tool+email params and ≥60s RID poll spacing so students never leave moeller-basil.workers.dev. Import remains optional fallback.",
   },
   clean: {
     toolName: "CLEAN",
     acceptedFormats: ["text", "json", "tsv"],
     instructions:
-      "Obtain CLEAN results through the BASIL-approved mechanism and import the raw export.",
+      "Live CLEAN is unavailable after probing clean.platform.ibiofoundry.illinois.edu (MMLi jobmgr/fastapi returned 404; self-signed TLS; UI uses hCaptcha). Import a legitimate CLEAN export. Do not invent EC numbers.",
     verificationNote:
-      "Verified: no Worker-ready free CLEAN automation is claimed in this build. Import stores raw results with provenance only.",
+      "Probed 2026-09-23: Illinois CLEAN SPA references jobmgr.mmli1.ncsa.illinois.edu and mmli.fastapi.mmli1.ncsa.illinois.edu, but those hosts returned 404 with self-signed certificates from this environment, and the web UI loads hCaptcha. Kept import-only honestly — no fabricated EC predictions.",
   },
   dali: {
     toolName: "Dali",
     acceptedFormats: ["text", "tsv", "json"],
     instructions:
-      "Run Dali on the public Dali server (or DaliLite locally), then import the raw output.",
+      "Prefer the live Run Dali button (Worker posts PDB+chain to ekhidna2 dump.cgi). Use import only if live Dali is down.",
     verificationNote:
-      "Verified: public Dali is primarily a web-form service; no documented free REST submit/poll API suitable for Workers was adopted. Import is the legitimate path.",
+      "Verified: Dali PDB search via http://ekhidna2.biocenter.helsinki.fi/cgi-bin/sans/dump.cgi (method=search, cd1=pdb+chain) + poll barcosel/tmp job page. Live path Worker-proxied. Import optional fallback.",
   },
   swissdock: {
     toolName: "SwissDock",
     acceptedFormats: ["text", "json"],
     instructions:
-      "Run docking on swissdock.ch (web or command-line), then import the raw session export. Keep docking distinct from experimental structures.",
+      "Prefer the live Run SwissDock button (requires student SMILES + box). Use import only if :8443 is unreachable from the Worker.",
     verificationNote:
-      "Verified: SwissDock exposes a free multi-step HTTPS API, but jobs routinely exceed Worker time budgets. Phase 4 uses structured import; live submit/poll may land later.",
+      "Verified: SwissDock CLI REST https://swissdock.ch:8443 (Vina: preplig SMILES → preptarget PDB → setparameters → startdock → checkstatus). Live path Worker-proxied; ligands/boxes never invented. Import optional fallback.",
   },
 };

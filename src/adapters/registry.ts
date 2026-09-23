@@ -6,12 +6,15 @@ import { createRcsbDataAdapter } from "@/adapters/rcsb";
 import { createInterProDataAdapter } from "@/adapters/interpro";
 import { createFoldseekSearchAdapter } from "@/adapters/foldseek";
 import { createSpriteSearchAdapter } from "@/adapters/sprite";
+import { createBlastSearchAdapter } from "@/adapters/blast";
+import { createDaliSearchAdapter } from "@/adapters/dali";
+import { createSwissDockSearchAdapter } from "@/adapters/swissdock";
 import type { ImportWorkflowDefinition } from "@/types/importWorkflow";
 import { getImportWorkflow } from "@/adapters/import/workflows";
 
 /**
  * Tools known to the platform.
- * RCSB + InterPro + Foldseek + SPRITE are live; others are stubs or import-only.
+ * RCSB + InterPro + Foldseek + SPRITE + BLAST + Dali + SwissDock are live; others are stubs or import-only.
  */
 export const SCIENTIFIC_TOOL_IDS = [
   "rcsb",
@@ -55,7 +58,7 @@ export const SCIENTIFIC_TOOL_REGISTRY: readonly ScientificToolRegistration[] = [
   {
     id: "blast",
     displayName: "BLAST",
-    liveAdapter: false,
+    liveAdapter: true,
     importSupported: true,
     moduleId: "blast",
   },
@@ -76,7 +79,7 @@ export const SCIENTIFIC_TOOL_REGISTRY: readonly ScientificToolRegistration[] = [
   {
     id: "dali",
     displayName: "Dali",
-    liveAdapter: false,
+    liveAdapter: true,
     importSupported: true,
     moduleId: "dali",
   },
@@ -90,7 +93,7 @@ export const SCIENTIFIC_TOOL_REGISTRY: readonly ScientificToolRegistration[] = [
   {
     id: "swissdock",
     displayName: "SwissDock",
-    liveAdapter: false,
+    liveAdapter: true,
     importSupported: true,
     moduleId: "swissdock",
   },
@@ -140,6 +143,30 @@ export function getScientificAdapter(
 
   if (registration.id === "sprite" && registration.liveAdapter) {
     return createSpriteSearchAdapter() as ScientificAdapter<
+      unknown,
+      unknown,
+      unknown
+    >;
+  }
+
+  if (registration.id === "blast" && registration.liveAdapter) {
+    return createBlastSearchAdapter() as ScientificAdapter<
+      unknown,
+      unknown,
+      unknown
+    >;
+  }
+
+  if (registration.id === "dali" && registration.liveAdapter) {
+    return createDaliSearchAdapter() as ScientificAdapter<
+      unknown,
+      unknown,
+      unknown
+    >;
+  }
+
+  if (registration.id === "swissdock" && registration.liveAdapter) {
+    return createSwissDockSearchAdapter() as ScientificAdapter<
       unknown,
       unknown,
       unknown

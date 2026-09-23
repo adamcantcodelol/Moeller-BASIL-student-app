@@ -64,7 +64,7 @@ const IMPORT_WORKFLOWS: Record<string, ImportWorkflowDefinition> = {
   blast: defineImportWorkflow(
     "blast",
     ["text", "json", "xml", "tsv"],
-    "Obtain BLAST results from a legitimate NCBI or equivalent search, then import the raw output. Do not paste fabricated alignments. Live BLAST automation is not claimed in Phase 3.",
+    "Optional fallback: if live Worker-proxied NCBI BLAST is down, import a legitimate BLAST export. The platform will not invent BLAST hits. Prefer the live Run BLAST button so students never open blast.ncbi.nlm.nih.gov.",
   ),
   interpro: defineImportWorkflow(
     "interpro",
@@ -74,12 +74,12 @@ const IMPORT_WORKFLOWS: Record<string, ImportWorkflowDefinition> = {
   clean: defineImportWorkflow(
     "clean",
     ["text", "json", "tsv"],
-    "Import CLEAN results obtained through a verified legitimate mechanism. Phase 3 stores raw imports only.",
+    "Live CLEAN is unavailable after honest API probing (MMLi backends 404 / hCaptcha). Import a legitimate CLEAN export. EC numbers are never invented.",
   ),
   dali: defineImportWorkflow(
     "dali",
     ["text", "tsv", "json"],
-    "Import Dali structural similarity output from a legitimate run. Matches are not fabricated.",
+    "Optional fallback: if live Worker-proxied Dali is down, import a legitimate Dali summary. Z-scores are never invented. Prefer the live Run Dali button.",
   ),
   foldseek: defineImportWorkflow(
     "foldseek",
@@ -89,7 +89,7 @@ const IMPORT_WORKFLOWS: Record<string, ImportWorkflowDefinition> = {
   swissdock: defineImportWorkflow(
     "swissdock",
     ["text", "json"],
-    "Import SwissDock / docking output from a legitimate run. Poses are not invented and remain distinct from experimental structures.",
+    "Optional fallback: if live SwissDock (:8443) is unreachable, import a legitimate session export. Poses are never invented. Prefer the live Run SwissDock button.",
   ),
 };
 

@@ -1,23 +1,25 @@
 # Scientific Modules
 
-## Live
+## Live (Worker-proxied — students stay on `*.workers.dev`)
 
-- RCSB, InterPro, Foldseek, SPRITE (Worker proxy of grafss.ukm.my)
+- RCSB / Mol*
+- InterPro
+- Foldseek
+- SPRITE (`grafss.ukm.my`)
+- **BLAST** (NCBI Common URL API; default `swissprot`; RID poll ≥60s)
+- **Dali** (ekhidna2 `dump.cgi` PDB search + job page poll)
+- **SwissDock** (`swissdock.ch:8443` Vina path; requires student SMILES + box)
 
-## Import
+## Import-only after probe
 
-- BLAST, CLEAN, Dali, SwissDock
-- SPRITE import remains optional fallback when live API is down
+- **CLEAN** — Illinois SPA references MMLi jobmgr/fastapi, but those hosts returned 404 with self-signed TLS from our probe environment; UI uses hCaptcha. Kept import-only honestly.
+
+## Import remains optional fallback
+
+For every live tool above when upstream is down.
 
 ## Synthesis / mentoring / reports
 
-- Active-Site Evidence Synthesis (student residues only)
-- Hypothesis Builder (student-authored)
-- ShannonBot (local Socratic; optional LLM key blocker documented)
-- Reports (markdown from stored data)
+- Active-Site Evidence Synthesis, Hypothesis Builder, ShannonBot, Reports
 
 All modules refuse to invent scientific results.
-
-## School network note
-
-Students only need `*.workers.dev` (plus existing RCSB/Mol* hosts). They do **not** need `grafss.ukm.my` when SPRITE is fully Worker-proxied. Cloudflare Worker egress to `grafss.ukm.my` must work.

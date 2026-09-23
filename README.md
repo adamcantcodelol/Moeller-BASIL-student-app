@@ -6,10 +6,10 @@ Molecular Biology Research Course.
 ## Current status
 
 Classroom build is deployed on Cloudflare Workers. Live scientific paths:
-RCSB/Mol*, InterPro, Foldseek, and **SPRITE** (Worker proxy of
-`grafss.ukm.my` so students never leave this site). Import fallbacks remain
-for BLAST / CLEAN / Dali / SwissDock (and optional SPRITE import if live is
-down). Results are never invented.
+RCSB/Mol*, InterPro, Foldseek, SPRITE, BLAST, Dali, and SwissDock (Worker
+proxied so students never leave this site). CLEAN remains import-only after
+honest API probing. Import fallbacks remain when live upstream is down.
+Results are never invented.
 
 ## What It Does
 

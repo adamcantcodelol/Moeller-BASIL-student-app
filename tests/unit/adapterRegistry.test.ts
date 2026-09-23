@@ -12,16 +12,22 @@ import { ScientificAdapterNotImplementedError } from "@/adapters/scientificAdapt
 import { InterProDataAdapter } from "@/adapters/interpro";
 import { FoldseekSearchAdapter } from "@/adapters/foldseek";
 import { SpriteSearchAdapter } from "@/adapters/sprite";
+import { BlastSearchAdapter } from "@/adapters/blast";
+import { DaliSearchAdapter } from "@/adapters/dali";
+import { SwissDockSearchAdapter } from "@/adapters/swissdock";
 
 describe("adapter registry", () => {
-  it("exposes RCSB, InterPro, Foldseek, and SPRITE as live adapters", () => {
+  it("exposes RCSB, InterPro, Foldseek, SPRITE, BLAST, Dali, and SwissDock as live adapters", () => {
     const tools = listScientificTools();
     const live = tools.filter((tool) => tool.liveAdapter);
     expect(live.map((tool) => tool.id).sort()).toEqual([
+      "blast",
+      "dali",
       "foldseek",
       "interpro",
       "rcsb",
       "sprite",
+      "swissdock",
     ]);
   });
 
@@ -37,10 +43,13 @@ describe("adapter registry", () => {
     }
   });
 
-  it("returns live InterPro, Foldseek, and SPRITE adapters", () => {
+  it("returns live InterPro, Foldseek, SPRITE, BLAST, Dali, and SwissDock adapters", () => {
     expect(getScientificAdapter("interpro")).toBeInstanceOf(InterProDataAdapter);
     expect(getScientificAdapter("foldseek")).toBeInstanceOf(FoldseekSearchAdapter);
     expect(getScientificAdapter("sprite")).toBeInstanceOf(SpriteSearchAdapter);
+    expect(getScientificAdapter("blast")).toBeInstanceOf(BlastSearchAdapter);
+    expect(getScientificAdapter("dali")).toBeInstanceOf(DaliSearchAdapter);
+    expect(getScientificAdapter("swissdock")).toBeInstanceOf(SwissDockSearchAdapter);
   });
 
   it("keeps import workflows for import-capable tools", () => {

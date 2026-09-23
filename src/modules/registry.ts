@@ -37,7 +37,7 @@ export const CURRICULUM_MODULES: readonly BasilModuleDefinition[] = [
     description: "Compare protein sequences using BLAST.",
     purpose: "Collect sequence homology evidence.",
     instructions:
-      "NCBI BLAST is asynchronous (poll RID ≥60s) and does not fit a single Worker request. Run BLAST on NCBI (or equivalent), then import the raw export. Results are never invented.",
+      "Run live NCBI blastp from this page (Worker submits + polls RID ≥60s spacing). Students never leave the Moeller BASIL site. Default database swissprot. Import remains an optional fallback if live NCBI is down. Results are never invented.",
     order: 2,
     implemented: true,
   },
@@ -61,7 +61,7 @@ export const CURRICULUM_MODULES: readonly BasilModuleDefinition[] = [
     description: "Perform the CLEAN analysis defined by BASIL.",
     purpose: "Collect CLEAN results with provenance.",
     instructions:
-      "No verified free Worker-friendly CLEAN automation is claimed yet. Import legitimate CLEAN output. Results are never invented.",
+      "Live CLEAN automation is unavailable after probing the Illinois / MMLi backends (jobmgr/fastapi returned 404; TLS self-signed; web UI uses hCaptcha). Import legitimate CLEAN output. Results are never invented.",
     order: 4,
     implemented: true,
   },
@@ -73,7 +73,7 @@ export const CURRICULUM_MODULES: readonly BasilModuleDefinition[] = [
     description: "Compare protein structures using Dali.",
     purpose: "Collect structural similarity evidence.",
     instructions:
-      "The public Dali server is web-form oriented without a documented free REST submit API suitable for Workers. Run Dali externally and import the raw export. Results are never invented.",
+      "Run live Dali PDB search from this page (Worker posts to ekhidna2 dump.cgi and polls the job page). Students never leave the Moeller BASIL site. Import remains an optional fallback if Dali is down or queued too long. Z-scores are never invented.",
     order: 5,
     implemented: true,
   },
@@ -109,7 +109,7 @@ export const CURRICULUM_MODULES: readonly BasilModuleDefinition[] = [
     description: "Investigate ligand docking.",
     purpose: "Collect docking observations distinct from experimental structures.",
     instructions:
-      "SwissDock command-line API is multi-step and long-running (often minutes). Use swissdock.ch externally, then import raw output. Docking poses are never invented and remain distinct from experimental structures.",
+      "Run live SwissDock (Vina) from this page — provide ligand SMILES and box center/size (never invented). Worker uses swissdock.ch:8443. Import remains optional fallback if :8443 is unreachable. Poses stay distinct from experimental structures.",
     order: 8,
     implemented: true,
   },
