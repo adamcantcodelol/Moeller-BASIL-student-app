@@ -19,9 +19,9 @@ describe("projectService", () => {
     ).toBe("not_started");
     expect(
       overview.moduleRuns.filter((run) => run.status === "not_started"),
-    ).toHaveLength(8);
+    ).toHaveLength(9);
     expect(
       overview.moduleRuns.filter((run) => run.status === "not_available_yet"),
-    ).toHaveLength(4);
+    ).toHaveLength(3);
   });
 });

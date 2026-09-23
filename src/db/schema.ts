@@ -128,6 +128,7 @@ export const evidence = sqliteTable(
     type: text("type").notNull(),
     description: text("description").notNull(),
     sourceResultId: text("source_result_id").references(() => results.id),
+    sourceModuleId: text("source_module_id").references(() => modules.id),
     residuesJson: text("residues_json"),
     strength: text("strength"),
     provenanceJson: text("provenance_json"),

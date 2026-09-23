@@ -57,8 +57,8 @@ describe("moduleRunService", () => {
     const db = await createTestDatabase();
     const project = await createProject(db, { name: "Phase guard" });
     const blast = await getModuleRun(db, project.id, "blast");
-    const activeSite = await getModuleRun(db, project.id, "active-site-evidence");
+    const hypothesis = await getModuleRun(db, project.id, "hypothesis-builder");
     expect(blast?.status).toBe("not_started");
-    expect(activeSite?.status).toBe("not_available_yet");
+    expect(hypothesis?.status).toBe("not_available_yet");
   });
 });

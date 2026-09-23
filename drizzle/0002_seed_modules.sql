@@ -8,7 +8,7 @@ INSERT INTO modules (id, number, slug, name, description, sort_order, implemente
   ('clean', '04', 'clean', 'CLEAN', 'Perform the CLEAN analysis defined by BASIL.', 4, 1),
   ('dali', '05', 'dali', 'Dali', 'Compare protein structures using Dali.', 5, 1),
   ('foldseek', '06', 'foldseek', 'Foldseek', 'Search for structural homologs using Foldseek.', 6, 1),
-  ('active-site-evidence', '07', 'active-site-evidence', 'Active-Site Evidence Synthesis', 'Combine evidence from earlier modules for candidate residues.', 7, 0),
+  ('active-site-evidence', '07', 'active-site-evidence', 'Active-Site Evidence Synthesis', 'Combine evidence from earlier modules for candidate residues.', 7, 1),
   ('swissdock', '08', 'swissdock', 'SwissDock', 'Investigate ligand docking.', 8, 1),
   ('hypothesis-builder', '09', 'hypothesis-builder', 'Hypothesis Builder', 'Write a student-authored, evidence-linked hypothesis.', 9, 0),
   ('shannonbot-review', '10', 'shannonbot-review', 'ShannonBot Review', 'Discuss reasoning with the Socratic AI mentor.', 10, 0),

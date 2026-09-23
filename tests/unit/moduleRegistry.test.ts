@@ -24,7 +24,7 @@ describe("curriculum registry", () => {
     ]);
   });
 
-  it("marks Phase 4 scientific tools implemented", () => {
+  it("marks Phase 4 tools and active-site synthesis implemented", () => {
     expect(getImplementedModuleIds()).toEqual([
       "pdb-setup",
       "sprite",
@@ -33,9 +33,10 @@ describe("curriculum registry", () => {
       "clean",
       "dali",
       "foldseek",
+      "active-site-evidence",
       "swissdock",
     ]);
-    expect(getModuleBySlug("active-site-evidence")?.implemented).toBe(false);
-    expect(getModuleBySlug("foldseek")?.implemented).toBe(true);
+    expect(getModuleBySlug("active-site-evidence")?.implemented).toBe(true);
+    expect(getModuleBySlug("hypothesis-builder")?.implemented).toBe(false);
   });
 });
