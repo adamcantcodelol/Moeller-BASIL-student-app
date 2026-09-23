@@ -12,7 +12,7 @@
     {
       "binding": "DB",
       "database_name": "basil",
-      "database_id": "00000000-0000-4000-8000-000000000001",
+      "database_id": "51dc8a93-7078-4d0a-855a-66d076c3034f",
       "migrations_dir": "drizzle",
     },
   ],
