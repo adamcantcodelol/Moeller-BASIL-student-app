@@ -19,7 +19,7 @@ export function validatePdbId(input: string): PdbIdValidationResult {
     return {
       ok: false,
       error:
-        "Use a classic four-character PDB ID (a digit followed by three letters or digits), for example 4HHB. The identifier is stored as entered after uppercase normalization. No structure file is downloaded in this phase.",
+        "Use a classic four-character PDB ID (a digit followed by three letters or digits), for example 4HHB. The identifier is stored as entered after uppercase normalization. Use Retrieve metadata from RCSB to load verified title, organism, chains, and sequence.",
     };
   }
 
