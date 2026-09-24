@@ -21,7 +21,13 @@ export const BLAST_CONTACT_EMAIL = "adamjfalci2@gmail.com";
 /** NCBI guidance: poll RID at most once per 60 seconds. */
 export const BLAST_NCBI_MIN_POLL_INTERVAL_MS = 60_000;
 
-export const BLAST_HITLIST_SIZE = 25;
+export const BLAST_HITLIST_SIZE = 50;
+
+/**
+ * Classroom pipeline gives NCBI this long before recording an honest timeout
+ * (with a retry button). NCBI's public queue sometimes estimates hours.
+ */
+export const BLAST_PIPELINE_TIMEOUT_MS = 10 * 60_000;
 
 export interface BlastFetchInput {
   sequence: string;
@@ -57,10 +63,16 @@ export interface BlastHitNormalized {
   hitTo: number | null;
 }
 
+export type SequenceSearchMethod = "ncbi-blast" | "rcsb-mmseqs2";
+
 export interface BlastNormalizedSearch {
+  /** NCBI RID, or the RCSB query id for RCSB sequence search. */
   rid: string;
   database: string;
-  program: "blastp";
+  program: "blastp" | "mmseqs2";
+  /** Which search produced these hits (older rows: undefined = NCBI BLAST). */
+  method?: SequenceSearchMethod;
+  methodLabel?: string;
   status: string;
   queryLength: number | null;
   hitCount: number;

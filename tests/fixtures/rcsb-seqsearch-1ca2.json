@@ -1,0 +1,119 @@
+{
+ "query_id": "128802c9-a31b-4c4d-81dd-bca58681ac73",
+ "result_type": "polymer_entity",
+ "total_count": 1508,
+ "group_by_count": 36,
+ "ungrouped_count": 0,
+ "result_set": [
+  {
+   "identifier": "1A42_1",
+   "score": 1.0,
+   "services": [
+    {
+     "service_type": "sequence",
+     "nodes": [
+      {
+       "node_id": 4832,
+       "original_score": 557.0,
+       "norm_score": 1.0,
+       "match_context": [
+        {
+         "sequence_identity": 1.0,
+         "evalue": 5.366e-180,
+         "bitscore": 557,
+         "alignment_length": 259,
+         "mismatches": 0,
+         "gaps_opened": 0,
+         "query_beg": 1,
+         "query_end": 259,
+         "subject_beg": 1,
+         "subject_end": 259,
+         "query_length": 259,
+         "subject_length": 259,
+         "query_aligned_seq": "SHHWGYGKHNGPEHWHKDFP",
+         "subject_aligned_seq": "SHHWGYGKHNGPEHWHKDFP"
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "identifier": "1V9E_1",
+   "score": 0.7954545454545454,
+   "services": [
+    {
+     "service_type": "sequence",
+     "nodes": [
+      {
+       "node_id": 4832,
+       "original_score": 458.0,
+       "norm_score": 0.7954545454545454,
+       "match_context": [
+        {
+         "sequence_identity": 0.8109999999999999,
+         "evalue": 1.706e-145,
+         "bitscore": 458,
+         "alignment_length": 255,
+         "mismatches": 48,
+         "gaps_opened": 0,
+         "query_beg": 1,
+         "query_end": 255,
+         "subject_beg": 1,
+         "subject_end": 255,
+         "query_length": 259,
+         "subject_length": 259,
+         "query_aligned_seq": "SHHWGYGKHNGPEHWHKDFP",
+         "subject_aligned_seq": "SHHWGYGKHNGPEHWHKDFP"
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "identifier": "2HFW_1",
+   "score": 0.5578512396694215,
+   "services": [
+    {
+     "service_type": "sequence",
+     "nodes": [
+      {
+       "node_id": 4832,
+       "original_score": 343.0,
+       "norm_score": 0.5578512396694215,
+       "match_context": [
+        {
+         "sequence_identity": 0.597,
+         "evalue": 8.236e-106,
+         "bitscore": 343,
+         "alignment_length": 256,
+         "mismatches": 103,
+         "gaps_opened": 0,
+         "query_beg": 4,
+         "query_end": 259,
+         "subject_beg": 5,
+         "subject_end": 260,
+         "query_length": 259,
+         "subject_length": 260,
+         "query_aligned_seq": "WGYGKHNGPEHWHKDFPIAK",
+         "subject_aligned_seq": "WGYASHNGPDHWHELFPNAK"
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  }
+ ],
+ "group_by": {
+  "similarity_cutoff": 95,
+  "ranking_criteria_type": {
+   "sort_by": "score",
+   "direction": "desc"
+  },
+  "aggregation_method": "sequence_identity"
+ }
+}

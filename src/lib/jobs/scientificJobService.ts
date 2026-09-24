@@ -22,6 +22,7 @@ import type { ModuleRunStatus } from "@/types/moduleRun";
 import { mapScientificJob } from "@/lib/db/mappers";
 import { storeImportedRawResult } from "@/adapters/import/storeImport";
 import type { ImportPayload } from "@/types/importWorkflow";
+import { toSafeErrorMessage } from "@/lib/db/storageLimits";
 
 function mapModuleRunStatusForJob(
   jobStatus: ScientificJobStatus,
@@ -243,7 +244,9 @@ export async function markJobFailed(
   return updateJob(db, jobId, {
     status: "failed",
     finishedAt: nowIso(),
-    error: errorMessage,
+    // Clamp: a huge message (e.g. drizzle echoing multi-MB params) must not
+    // itself fail the D1 write and hide the real failure.
+    error: toSafeErrorMessage(errorMessage, "Tool failed."),
   });
 }
 

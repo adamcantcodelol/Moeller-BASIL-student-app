@@ -24,7 +24,17 @@ import {
   pollBlastJob,
   submitBlastSearch,
   listBlastResults,
+  runRcsbSequenceSearchForProject,
 } from "@/lib/services/blastService";
+import {
+  BLAST_NCBI_MIN_POLL_INTERVAL_MS,
+  BLAST_PIPELINE_TIMEOUT_MS,
+} from "@/adapters/blast";
+import { markJobFailed } from "@/lib/jobs/scientificJobService";
+import {
+  describeErrorForLog,
+  toSafeErrorMessage,
+} from "@/lib/db/storageLimits";
 import {
   pollFoldseekJob,
   submitFoldseekSearch,
@@ -98,23 +108,57 @@ async function loadPipelineRow(
   return rows[0] ? mapPipeline(rows[0]) : null;
 }
 
+function clampStepText(steps: PipelineStep[], max: number): PipelineStep[] {
+  const clamp = (value: string | null) =>
+    value && value.length > max ? `${value.slice(0, max - 1)}…` : value;
+  return steps.map((step) => ({
+    ...step,
+    error: clamp(step.error),
+    summary: clamp(step.summary),
+    skipReason: clamp(step.skipReason),
+  }));
+}
+
 async function persistPipeline(
   db: AppDatabase,
   pipeline: AnalysisPipeline,
 ): Promise<AnalysisPipeline> {
   const timestamp = nowIso();
-  await db
-    .update(analysisPipelines)
-    .set({
-      status: pipeline.status,
-      currentStepIndex: pipeline.currentStepIndex,
-      stepsJson: JSON.stringify(pipeline.steps),
-      startedAt: pipeline.startedAt,
-      finishedAt: pipeline.finishedAt,
-      updatedAt: timestamp,
-    })
-    .where(eq(analysisPipelines.id, pipeline.id));
-  return { ...pipeline, updatedAt: timestamp };
+  const write = (steps: PipelineStep[]) =>
+    db
+      .update(analysisPipelines)
+      .set({
+        status: pipeline.status,
+        currentStepIndex: pipeline.currentStepIndex,
+        stepsJson: JSON.stringify(steps),
+        startedAt: pipeline.startedAt,
+        finishedAt: pipeline.finishedAt,
+        updatedAt: timestamp,
+      })
+      .where(eq(analysisPipelines.id, pipeline.id));
+  let steps = clampStepText(pipeline.steps, 1_000);
+  try {
+    await write(steps);
+  } catch (error) {
+    console.error(
+      "[pipeline] persist failed, retrying with short step text:",
+      describeErrorForLog(error),
+    );
+    steps = clampStepText(steps, 200);
+    try {
+      await write(steps);
+    } catch (retryError) {
+      console.error(
+        "[pipeline] persist retry failed:",
+        describeErrorForLog(retryError),
+      );
+      throw new ServiceError(
+        "Could not save analysis progress to the class database just now (it may be busy). Nothing was lost — the page will try again automatically.",
+        503,
+      );
+    }
+  }
+  return { ...pipeline, steps, updatedAt: timestamp };
 }
 
 function patchStep(
@@ -270,10 +314,10 @@ async function submitOrSkipStep(
         }),
       };
     } catch (error) {
-      const message =
-        error instanceof ServiceError || error instanceof Error
-          ? error.message
-          : "InterPro failed without fabricating annotations.";
+      const message = toSafeErrorMessage(
+        error,
+        "InterPro failed without fabricating annotations.",
+      );
       return {
         waiting: false,
         steps: patchStep(steps, index, {
@@ -301,15 +345,37 @@ async function submitOrSkipStep(
         ? "SPRITE submitted — waiting for matches"
         : `SPRITE complete (${result.normalized?.hitCount ?? 0} hits)`;
     } else if (step.tool === "blast") {
-      // pdbaa is much faster than swissprot for classroom auto-run.
+      // Classroom default: RCSB sequence search (MMseqs2 vs PDB) answers in
+      // seconds. Fall back to NCBI BLAST (pdbaa) only if RCSB is unavailable.
+      let rcsbFailure: string | null = null;
+      try {
+        const started = Date.now();
+        const rcsb = await runRcsbSequenceSearchForProject(db, projectId);
+        const secs = Math.max(1, Math.round((Date.now() - started) / 1000));
+        return {
+          waiting: false,
+          steps: patchStep(steps, index, {
+            status: "succeeded",
+            jobId: rcsb.job.id,
+            startedAt: timestamp,
+            finishedAt: nowIso(),
+            summary: `RCSB sequence search (MMseqs2 vs PDB, BLAST-style): ${rcsb.normalized.hitCount} non-redundant hit${rcsb.normalized.hitCount === 1 ? "" : "s"} in ~${secs}s. Full NCBI BLAST is optional in the BLAST module.`,
+            error: null,
+            skipReason: null,
+          }),
+        };
+      } catch (error) {
+        rcsbFailure = toSafeErrorMessage(error, "RCSB sequence search failed.");
+        console.error("[pipeline] RCSB sequence search failed:", describeErrorForLog(error));
+      }
       const result = await submitBlastSearch(db, projectId, {
         database: "pdbaa",
       });
       jobId = result.job.id;
       pending = result.pending;
       summary = pending
-        ? `BLAST submitted on pdbaa (RID ${result.rid ?? "—"}) — later tools continue while NCBI runs`
-        : `BLAST complete (${result.normalized?.hitCount ?? 0} hits)`;
+        ? `RCSB sequence search was unavailable (${rcsbFailure}), so NCBI BLAST was submitted on pdbaa (RID ${result.rid ?? "—"}). Still running at NCBI — usually 1–5 min; other tools keep going.`
+        : `NCBI BLAST complete on pdbaa (${result.normalized?.hitCount ?? 0} hits)`;
     } else if (step.tool === "foldseek") {
       const result = await submitFoldseekSearch(db, projectId);
       jobId = result.job.id;
@@ -380,10 +446,11 @@ async function submitOrSkipStep(
       }),
     };
   } catch (error) {
-    const message =
-      error instanceof ServiceError || error instanceof Error
-        ? error.message
-        : "Tool failed without fabricating results.";
+    const message = toSafeErrorMessage(
+      error,
+      `${step.label} failed without fabricating results.`,
+    );
+    console.error(`[pipeline] ${step.tool} submit failed:`, describeErrorForLog(error));
 
     if (step.tool === "clean" && isCleanUnavailableError(error)) {
       return {
@@ -450,23 +517,40 @@ async function pollRunningStep(
         summary = `SPRITE complete (${result.normalized?.hitCount ?? 0} hits)`;
       }
     } else if (step.tool === "blast") {
+      const startedMs = step.startedAt ? Date.parse(step.startedAt) : NaN;
+      const elapsedMs = Number.isFinite(startedMs) ? Date.now() - startedMs : 0;
+      if (elapsedMs >= BLAST_PIPELINE_TIMEOUT_MS) {
+        const minutes = Math.round(BLAST_PIPELINE_TIMEOUT_MS / 60_000);
+        const message = `NCBI BLAST did not finish within ${minutes} minutes (NCBI's public queue is busy). No hits were invented. Press "Retry" to try again.`;
+        try {
+          await markJobFailed(db, step.jobId, message);
+        } catch (markError) {
+          console.error(
+            "[pipeline] could not mark timed-out BLAST job failed:",
+            toSafeErrorMessage(markError, "unknown"),
+          );
+        }
+        return {
+          waiting: false,
+          steps: patchStep(steps, index, {
+            status: "failed",
+            finishedAt: nowIso(),
+            error: message,
+            summary: "Timed out at NCBI",
+          }),
+        };
+      }
+      const elapsedText = `${Math.max(1, Math.round(elapsedMs / 60_000))} min elapsed`;
       const result = await pollBlastJob(db, projectId, step.jobId);
       pending = result.pending;
       if (!pending) {
-        summary = `BLAST complete (${result.normalized?.hitCount ?? 0} hits)`;
-      } else if (result.deferredNcbiPoll) {
-        const waitMs = Math.max(1_000, result.ncbiWaitRemainingMs ?? 60_000);
-        suggestedWaitMs = Math.max(suggestedWaitMs, waitMs);
-        const secs = Math.max(1, Math.ceil(waitMs / 1000));
-        summary = `BLAST waiting on NCBI (next check ~${secs}s). Foldseek and later tools keep going.`;
+        summary = `NCBI BLAST complete (${result.normalized?.hitCount ?? 0} hits)`;
       } else {
-        // Real NCBI poll happened; respect ≥60s before the next upstream check.
-        suggestedWaitMs = Math.max(suggestedWaitMs, 55_000);
-        const rtoeHint =
-          typeof result.rtoe === "number" && result.rtoe > 0
-            ? ` NCBI estimate ~${Math.max(1, Math.round(result.rtoe / 60))} min.`
-            : "";
-        summary = `BLAST still running at NCBI.${rtoeHint}`;
+        // Next NCBI poll is allowed once 60s have passed since the last one.
+        suggestedWaitMs = result.deferredNcbiPoll
+          ? Math.max(1_000, result.ncbiWaitRemainingMs ?? BLAST_NCBI_MIN_POLL_INTERVAL_MS)
+          : BLAST_NCBI_MIN_POLL_INTERVAL_MS;
+        summary = `NCBI BLAST still running (${elapsedText}; usually 1–5 min, times out at ${Math.round(BLAST_PIPELINE_TIMEOUT_MS / 60_000)} min). Other tools and Results keep working.`;
       }
     } else if (step.tool === "foldseek") {
       const result = await pollFoldseekJob(db, projectId, step.jobId);
@@ -546,10 +630,11 @@ async function pollRunningStep(
       }),
     };
   } catch (error) {
-    const message =
-      error instanceof ServiceError || error instanceof Error
-        ? error.message
-        : "Poll failed without fabricating results.";
+    const message = toSafeErrorMessage(
+      error,
+      `${step.label} check failed without fabricating results.`,
+    );
+    console.error(`[pipeline] ${step.tool} poll failed:`, describeErrorForLog(error));
 
     if (step.tool === "clean" && isCleanUnavailableError(error)) {
       return {
@@ -625,8 +710,10 @@ export async function tickPipeline(
   }
 
   let steps = pipeline.steps;
-  let suggestedWaitMs = 4_000;
   let advanced = false;
+  // Only NCBI BLAST needs long spacing (≥60s between upstream checks). Other
+  // tools are polled every few seconds so they are never held back by BLAST.
+  let blastWaitMs: number | null = null;
 
   // Poll every running job first (BLAST can sit for minutes without blocking others).
   for (let i = 0; i < steps.length; i += 1) {
@@ -634,8 +721,12 @@ export async function tickPipeline(
     if (step.status !== "running") continue;
     const result = await pollRunningStep(db, projectId, step, i, steps);
     steps = result.steps;
-    if (typeof result.suggestedWaitMs === "number") {
-      suggestedWaitMs = Math.max(suggestedWaitMs, result.suggestedWaitMs);
+    if (
+      step.tool === "blast" &&
+      result.waiting &&
+      typeof result.suggestedWaitMs === "number"
+    ) {
+      blastWaitMs = result.suggestedWaitMs;
     }
     if (!result.waiting && isTerminalStepStatus(steps[i]!.status)) {
       advanced = true;
@@ -655,10 +746,18 @@ export async function tickPipeline(
     steps = result.steps;
     advanced = true;
     if (result.waiting && steps[pendingIndex]!.tool === "blast") {
-      // After Put + first SearchInfo, NCBI asks for ≥60s before the next poll.
-      suggestedWaitMs = Math.max(suggestedWaitMs, 55_000);
+      // NCBI fallback: Put + first SearchInfo just happened.
+      blastWaitMs = BLAST_NCBI_MIN_POLL_INTERVAL_MS;
     }
   }
+
+  const otherWork = steps.some(
+    (step) =>
+      step.status === "pending" ||
+      (step.status === "running" && step.tool !== "blast"),
+  );
+  const suggestedWaitMs =
+    otherWork || blastWaitMs === null ? 4_000 : blastWaitMs;
 
   const stillWaiting = steps.some((step) => step.status === "running");
   const allTerminal = steps.every((step) => isTerminalStepStatus(step.status));
@@ -966,7 +1065,7 @@ export async function getProjectResultsSections(
     `SPRITE · ${n.hitCount ?? 0} hits (RMSD ascending)`,
   );
   await pushTool("blast", () => listBlastResults(db, projectId), (n) =>
-    `BLAST · ${n.hitCount ?? 0} hits`,
+    `${(n as { methodLabel?: string }).methodLabel ?? "NCBI BLAST"} · ${n.hitCount ?? 0} hits`,
   );
   await pushTool("foldseek", () => listFoldseekResults(db, projectId), (n) =>
     `Foldseek · ${n.hitCount ?? 0} hits`,

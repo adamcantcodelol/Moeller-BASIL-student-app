@@ -8,6 +8,9 @@ import {
 } from "@/lib/services/pipelineService";
 import { PIPELINE_TOOLS, type PipelineTool } from "@/types/pipeline";
 
+const PIPELINE_FALLBACK_ERROR =
+  "The analysis server hit a temporary problem. Your progress is saved — the page will keep retrying automatically.";
+
 export const dynamic = "force-dynamic";
 
 export async function GET(
@@ -20,7 +23,7 @@ export async function GET(
     const pipeline = await getPipelineStatus(db, projectId);
     return Response.json({ pipeline });
   } catch (error) {
-    return handleServiceError(error);
+    return handleServiceError(error, PIPELINE_FALLBACK_ERROR);
   }
 }
 
@@ -76,6 +79,6 @@ export async function POST(
     if (error instanceof SyntaxError) {
       return jsonError("Request body must be valid JSON when provided.", 400);
     }
-    return handleServiceError(error);
+    return handleServiceError(error, PIPELINE_FALLBACK_ERROR);
   }
 }

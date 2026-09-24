@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import type { AppDatabase } from "@/db/client";
 import { moduleRuns, results, scientificJobs } from "@/db/schema";
 import { createId, nowIso } from "@/lib/ids";
+import { serializeRawForStorage } from "@/lib/db/storageLimits";
 import { getProjectById } from "@/lib/db/queries/projects";
 import { getModuleRun } from "@/lib/db/queries/moduleRuns";
 import { getStructureByProjectId } from "@/lib/db/queries/structures";
@@ -13,8 +14,13 @@ import {
   isBlastDatabase,
   BlastAdapterError,
   sanitizeProteinSequence,
+  runRcsbSequenceSearch,
+  normalizeRcsbSequenceSearch,
+  RCSB_SEQUENCE_METHOD,
+  RCSB_SEQUENCE_DATABASE,
   type BlastNormalizedSearch,
   type BlastRawPayload,
+  type RcsbSequenceSearchRaw,
 } from "@/adapters/blast";
 import {
   createScientificJob,
@@ -58,7 +64,7 @@ async function persistSuccess(
     projectIsDemo: boolean;
     moduleRunId: string;
     jobId: string;
-    raw: BlastRawPayload;
+    raw: BlastRawPayload | RcsbSequenceSearchRaw;
     normalized: BlastNormalizedSearch;
     provenance: ReturnType<
       ReturnType<typeof createBlastSearchAdapter>["getProvenance"]
@@ -78,7 +84,10 @@ async function persistSuccess(
       id: rawResultId,
       moduleRunId: options.moduleRunId,
       type: "raw",
-      rawDataJson: JSON.stringify(options.raw),
+      rawDataJson: serializeRawForStorage(options.raw, {
+        tool: "BLAST",
+        source: provenance.source,
+      }),
       normalizedDataJson: null,
       source: provenance.source,
       provenanceJson: JSON.stringify(provenance),
@@ -233,6 +242,77 @@ export async function submitBlastSearch(
       error instanceof BlastAdapterError || error instanceof Error
         ? error.message
         : "BLAST failed without fabricating results.";
+    await markJobFailed(db, job.id, message);
+    mapBlastError(error);
+  }
+}
+
+/**
+ * Fast classroom sequence-similarity search: RCSB Search API (MMseqs2 against
+ * the PDB). Completes in one request (typically 1–4 s), unlike NCBI BLAST whose
+ * public queue can take minutes to hours. Stored as a BLAST-module job with
+ * method "rcsb-mmseqs2" so the UI and provenance label it honestly.
+ */
+export async function runRcsbSequenceSearchForProject(
+  db: AppDatabase,
+  projectId: string,
+  options?: { fetchImpl?: typeof fetch },
+): Promise<{ job: ScientificJob; normalized: BlastNormalizedSearch }> {
+  const project = await getProjectById(db, projectId);
+  if (!project) {
+    throw new ServiceError("Project not found.", 404);
+  }
+  const structure = await getStructureByProjectId(db, projectId);
+  const sequence = resolveSequence(structure?.sequence);
+  if (sequence.length < 10) {
+    throw new ServiceError(
+      "Save a PDB structure with a sequence (Protein / PDB Setup → retrieve from RCSB) before running a sequence search.",
+      400,
+    );
+  }
+  const run = await getModuleRun(db, projectId, BLAST_MODULE_ID);
+  if (!run) {
+    throw new ServiceError("BLAST module run is missing.", 500);
+  }
+
+  const job = await createScientificJob(db, {
+    moduleRunId: run.id,
+    tool: "blast",
+    mode: "adapter",
+    parameters: {
+      method: RCSB_SEQUENCE_METHOD,
+      database: RCSB_SEQUENCE_DATABASE,
+      queryLength: sequence.length,
+      pdbId: structure?.pdbId ?? null,
+    },
+  });
+  await markJobRunning(db, job.id);
+
+  try {
+    const retrievedAt = nowIso();
+    const raw = await runRcsbSequenceSearch(
+      { sequence, queryTitle: structure?.pdbId ?? undefined },
+      { fetchImpl: options?.fetchImpl },
+    );
+    const normalized = normalizeRcsbSequenceSearch(raw, {
+      queryLength: sequence.length,
+      retrievedAt,
+      pdbId: structure?.pdbId ?? null,
+    });
+    const persisted = await persistSuccess(db, {
+      projectIsDemo: project.isDemo,
+      moduleRunId: run.id,
+      jobId: job.id,
+      raw,
+      normalized,
+      provenance: normalized.provenance,
+    });
+    return { job: persisted.job, normalized: persisted.normalized };
+  } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : "RCSB sequence search failed without fabricating results.";
     await markJobFailed(db, job.id, message);
     mapBlastError(error);
   }

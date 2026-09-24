@@ -18,7 +18,7 @@ import {
   startPipeline,
   tickPipeline,
 } from "@/lib/services/pipelineService";
-import { structures } from "@/db/schema";
+import { analysisPipelines, structures } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { nowIso } from "@/lib/ids";
 import type { PdbStructure } from "@/types/structure";
@@ -39,6 +39,9 @@ vi.mock("@/lib/services/spriteService", () => ({
 }));
 
 vi.mock("@/lib/services/blastService", () => ({
+  runRcsbSequenceSearchForProject: vi.fn(async () => {
+    throw new Error("RCSB search unavailable in this test");
+  }),
   submitBlastSearch: vi.fn(async () => ({
     job: { id: "blast-job", status: "running" },
     pending: true,
@@ -226,7 +229,9 @@ describe("pipelineService tick flow", () => {
     expect(tick2.pipeline.steps[1]?.tool).toBe("blast");
     expect(tick2.pipeline.steps[1]?.status).toBe("running");
     expect(tick2.waiting).toBe(true);
-    expect(tick2.suggestedWaitMs).toBeGreaterThanOrEqual(55_000);
+    expect(tick2.pipeline.steps[1]?.summary).toMatch(/RCSB sequence search was unavailable/);
+    // Later tools are pending, so the client is NOT held to NCBI's 60s spacing.
+    expect(tick2.suggestedWaitMs).toBe(4_000);
 
     // Poll finishes BLAST and starts Foldseek in the same tick (overlap).
     const tick3 = await tickPipeline(db, project.id);
@@ -255,7 +260,114 @@ describe("pipelineService tick flow", () => {
     expect(overlapped.pipeline.steps[1]?.status).toBe("running");
     expect(overlapped.pipeline.steps[2]?.status).toBe("succeeded");
     expect(overlapped.waiting).toBe(true);
-    expect(overlapped.suggestedWaitMs).toBeGreaterThanOrEqual(45_000);
+    // Dali etc. still pending → short tick, BLAST deferral handled server-side.
+    expect(overlapped.suggestedWaitMs).toBe(4_000);
+  });
+
+  it("uses the fast RCSB sequence search for the BLAST step when available", async () => {
+    const blast = await import("@/lib/services/blastService");
+    vi.mocked(blast.runRcsbSequenceSearchForProject).mockResolvedValueOnce({
+      job: { id: "rcsb-job", status: "succeeded" } as never,
+      normalized: { hitCount: 36 } as never,
+    });
+    const submitCallsBefore = vi.mocked(blast.submitBlastSearch).mock.calls.length;
+    const { db, project } = await seedRcsbProject();
+    await startPipeline(db, project.id);
+    await tickPipeline(db, project.id); // sprite
+    const tick = await tickPipeline(db, project.id); // blast via RCSB
+    const step = tick.pipeline.steps[1]!;
+    expect(step.status).toBe("succeeded");
+    expect(step.jobId).toBe("rcsb-job");
+    expect(step.summary).toMatch(/RCSB sequence search \(MMseqs2 vs PDB/);
+    expect(step.summary).toMatch(/36 non-redundant hits/);
+    expect(vi.mocked(blast.submitBlastSearch).mock.calls.length).toBe(submitCallsBefore);
+  });
+
+  it("waits for NCBI spacing only when BLAST is the last thing running", async () => {
+    const blast = await import("@/lib/services/blastService");
+    vi.mocked(blast.pollBlastJob).mockResolvedValue({
+      job: { id: "blast-job", status: "running" } as never,
+      pending: true,
+      rid: "RID1",
+      rtoe: 120,
+      normalized: null,
+      deferredNcbiPoll: true,
+      ncbiWaitRemainingMs: 42_000,
+    });
+    try {
+      const { db, project } = await seedRcsbProject();
+      await startPipeline(db, project.id);
+      let last = await tickPipeline(db, project.id);
+      for (let i = 0; i < 12; i += 1) {
+        last = await tickPipeline(db, project.id);
+      }
+      const others = last.pipeline.steps.filter((s) => s.tool !== "blast");
+      expect(others.every((s) => s.status !== "pending" && s.status !== "running")).toBe(true);
+      expect(last.pipeline.steps[1]?.status).toBe("running");
+      expect(last.pipeline.steps[1]?.summary).toMatch(/usually 1–5 min/);
+      expect(last.waiting).toBe(true);
+      expect(last.suggestedWaitMs).toBe(42_000);
+    } finally {
+      vi.mocked(blast.pollBlastJob).mockReset();
+      vi.mocked(blast.pollBlastJob).mockImplementation(async () => ({
+        job: { id: "blast-job", status: "succeeded" } as never,
+        pending: false,
+        rid: "RID1",
+        rtoe: 10,
+        normalized: { hitCount: 3 } as never,
+      }));
+    }
+  });
+
+  it("times BLAST out after 10 minutes honestly and lets the teacher retry it", async () => {
+    const { db, project } = await seedRcsbProject();
+    await startPipeline(db, project.id);
+    await tickPipeline(db, project.id); // sprite
+    await tickPipeline(db, project.id); // blast submitted to NCBI (RCSB mocked down)
+
+    // Pretend BLAST was submitted 11 minutes ago.
+    const row = (await db.select().from(analysisPipelines))[0]!;
+    const steps = JSON.parse(row.stepsJson) as { tool: string; startedAt: string | null }[];
+    steps[1]!.startedAt = new Date(Date.now() - 11 * 60_000).toISOString();
+    await db
+      .update(analysisPipelines)
+      .set({ stepsJson: JSON.stringify(steps) })
+      .where(eq(analysisPipelines.id, row.id));
+
+    const timedOut = await tickPipeline(db, project.id);
+    const blastStep = timedOut.pipeline.steps[1]!;
+    expect(blastStep.status).toBe("failed");
+    expect(blastStep.error).toMatch(/did not finish within 10 minutes/);
+    expect(blastStep.error).toMatch(/No hits were invented/);
+
+    const retried = await retryPipelineStep(db, project.id, "blast");
+    expect(retried.status).toBe("running");
+    expect(retried.steps[1]?.status).toBe("pending");
+    expect(retried.steps[1]?.error).toBeNull();
+    // Already-finished tools are not re-run.
+    expect(retried.steps[0]?.status).toBe("succeeded");
+  });
+
+  it("records a huge tool error as a short plain-English step error instead of crashing the tick", async () => {
+    const foldseek = await import("@/lib/services/foldseekService");
+    const hugeParams = "x".repeat(5_000_000);
+    vi.mocked(foldseek.submitFoldseekSearch).mockRejectedValueOnce(
+      new Error(`Failed query: insert into "results" values (?, ?)\nparams: ${hugeParams}`),
+    );
+    const { db, project } = await seedRcsbProject();
+    await startPipeline(db, project.id);
+    await tickPipeline(db, project.id); // sprite
+    await tickPipeline(db, project.id); // blast
+    const tick = await tickPipeline(db, project.id); // foldseek throws
+    const step = tick.pipeline.steps[2]!;
+    expect(step.tool).toBe("foldseek");
+    expect(step.status).toBe("failed");
+    expect(step.error!.length).toBeLessThan(700);
+    expect(step.error).toMatch(/class database/);
+    expect(step.error).not.toMatch(/Failed query/);
+    // Pipeline keeps going to the next tool on the following tick.
+    const next = await tickPipeline(db, project.id);
+    expect(next.pipeline.steps[3]?.status).toBe("succeeded");
   });
 
   it("marks CLEAN unavailable (not a fake result) when MoleculeMaker storage is down; SwissDock skipped when ligand missing; InterPro runs", async () => {

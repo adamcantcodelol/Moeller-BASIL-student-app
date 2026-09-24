@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import type { AppDatabase } from "@/db/client";
 import { moduleRuns, results, scientificJobs } from "@/db/schema";
 import { createId, nowIso } from "@/lib/ids";
+import { serializeRawForStorage } from "@/lib/db/storageLimits";
 import { getProjectById } from "@/lib/db/queries/projects";
 import { getModuleRun } from "@/lib/db/queries/moduleRuns";
 import { getStructureByProjectId } from "@/lib/db/queries/structures";
@@ -43,6 +44,49 @@ function mapFoldseekError(error: unknown): never {
   throw error;
 }
 
+/** Top alignments kept per query in the stored raw payload. */
+const FOLDSEEK_RAW_STORED_HITS = 100;
+
+/**
+ * Foldseek returns every alignment with full coordinates (7.5 MB for 2QRU),
+ * which exceeds D1's 2 MB row limit. Store the top hits (upstream order) and
+ * say so explicitly; normalized hitCount still reflects the full response.
+ */
+export function trimFoldseekRawForStorage(
+  raw: FoldseekRawPayload,
+): FoldseekRawPayload & { storageNote?: string } {
+  const result = raw.result;
+  const blocks = Array.isArray(result?.results) ? result.results : null;
+  if (!result || !blocks) return raw;
+  let original = 0;
+  let kept = 0;
+  const trimmedBlocks = blocks.map((block: unknown) => {
+    if (block === null || typeof block !== "object") return block;
+    const record = block as Record<string, unknown>;
+    if (!Array.isArray(record.alignments)) return block;
+    return {
+      ...record,
+      alignments: record.alignments.map((group: unknown) => {
+        if (!Array.isArray(group)) {
+          original += 1;
+          kept += 1;
+          return group;
+        }
+        original += group.length;
+        const slice = group.slice(0, FOLDSEEK_RAW_STORED_HITS);
+        kept += slice.length;
+        return slice;
+      }),
+    };
+  });
+  if (kept === original) return raw;
+  return {
+    ...raw,
+    result: { ...result, results: trimmedBlocks },
+    storageNote: `Stored raw payload keeps the top ${FOLDSEEK_RAW_STORED_HITS} alignments per query (${kept} of ${original}) in Foldseek's own ranking to fit the database row limit. Nothing was altered or invented.`,
+  };
+}
+
 async function persistSuccess(
   db: AppDatabase,
   options: {
@@ -65,7 +109,10 @@ async function persistSuccess(
       id: rawResultId,
       moduleRunId: options.moduleRunId,
       type: "raw",
-      rawDataJson: JSON.stringify(options.raw),
+      rawDataJson: serializeRawForStorage(trimFoldseekRawForStorage(options.raw), {
+        tool: "Foldseek",
+        source: provenance.source,
+      }),
       normalizedDataJson: null,
       source: provenance.source,
       provenanceJson: JSON.stringify(provenance),

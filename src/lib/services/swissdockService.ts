@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import type { AppDatabase } from "@/db/client";
 import { moduleRuns, results, scientificJobs } from "@/db/schema";
 import { createId, nowIso } from "@/lib/ids";
+import { serializeRawForStorage } from "@/lib/db/storageLimits";
 import { getProjectById } from "@/lib/db/queries/projects";
 import { getModuleRun } from "@/lib/db/queries/moduleRuns";
 import { getStructureByProjectId } from "@/lib/db/queries/structures";
@@ -65,7 +66,10 @@ async function persistSuccess(
       id: rawResultId,
       moduleRunId: options.moduleRunId,
       type: "raw",
-      rawDataJson: JSON.stringify(options.raw),
+      rawDataJson: serializeRawForStorage(options.raw, {
+        tool: "SwissDock",
+        source: provenance.source,
+      }),
       normalizedDataJson: null,
       source: provenance.source,
       provenanceJson: JSON.stringify(provenance),

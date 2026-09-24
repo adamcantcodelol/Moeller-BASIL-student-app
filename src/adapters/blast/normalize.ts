@@ -164,6 +164,8 @@ export function normalizeBlastPayload(
     rid: output.rid,
     database: output.database,
     program: "blastp",
+    method: "ncbi-blast",
+    methodLabel: `NCBI BLAST (blastp vs ${output.database})`,
     status: output.status,
     queryLength: output.queryLength,
     hitCount: hits.length,

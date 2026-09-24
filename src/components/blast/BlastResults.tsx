@@ -24,7 +24,7 @@ export function BlastResults({
           title="Normalized BLAST hits"
           message={
             running
-              ? `BLAST job is still running on the Worker${rid ? ` (RID ${rid})` : ""}. Keep this page open or refresh later.`
+              ? `NCBI BLAST is still running${rid ? ` (RID ${rid})` : ""} — usually 1–5 minutes, sometimes longer when NCBI is busy. Other results are ready; refresh this page later.`
               : "No BLAST search has completed yet."
           }
         />
@@ -37,9 +37,27 @@ export function BlastResults({
 
   return (
     <div className="card">
-      <h3>Normalized BLAST hits</h3>
+      <h3>Normalized sequence-similarity hits</h3>
       <p className="muted">
-        RID {normalized.rid} · db {normalized.database} · {normalized.hitCount}{" "}
+        <strong>
+          Method:{" "}
+          {normalized.methodLabel ??
+            `NCBI BLAST (${normalized.program} vs ${normalized.database})`}
+        </strong>
+      </p>
+      {normalized.method === "rcsb-mmseqs2" ? (
+        <p className="muted">
+          Fast classroom search of every experimental structure in the PDB with
+          MMseqs2 (a BLAST-like algorithm). Near-identical PDB entries are
+          grouped at 95% identity so you see diverse homologs. For a full NCBI
+          BLAST run, use the BLAST module button below.
+        </p>
+      ) : null}
+      <p className="muted">
+        {normalized.method === "rcsb-mmseqs2"
+          ? `RCSB query ${normalized.rid}`
+          : `RID ${normalized.rid}`}{" "}
+        · db {normalized.database} · {normalized.hitCount}{" "}
         hit{normalized.hitCount === 1 ? "" : "s"}
         {normalized.queryLength !== null
           ? ` · query length ${normalized.queryLength}`
@@ -51,7 +69,7 @@ export function BlastResults({
       </p>
       {normalized.hits.length === 0 ? (
         <p className="muted">
-          BLAST returned zero hits. That is a real empty result.
+          The search returned zero hits. That is a real empty result.
         </p>
       ) : (
         <div className="table-wrap">
