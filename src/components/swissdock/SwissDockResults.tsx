@@ -1,4 +1,5 @@
 import type { SwissDockNormalizedSearch } from "@/adapters/swissdock";
+import { DataCollapse } from "@/components/ui/DataCollapse";
 import type { ScientificJob } from "@/types/scientificJob";
 import { EmptyScientificPanel } from "@/components/module/EmptyScientificPanel";
 
@@ -46,26 +47,28 @@ export function SwissDockResults({
         {normalized.statusSummary}
       </pre>
       {normalized.poses.length > 0 ? (
-        <div className="table-wrap">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>Affinity / score</th>
-                <th>Note</th>
-              </tr>
-            </thead>
-            <tbody>
-              {normalized.poses.map((pose) => (
-                <tr key={pose.rank ?? pose.note}>
-                  <td>{pose.rank ?? "—"}</td>
-                  <td>{pose.affinity ?? "—"}</td>
-                  <td>{pose.note ?? "—"}</td>
+        <DataCollapse label="Docking poses" count={normalized.poses.length} noun="poses">
+          <div className="table-wrap">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Affinity / score</th>
+                  <th>Note</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {normalized.poses.map((pose) => (
+                  <tr key={pose.rank ?? pose.note}>
+                    <td>{pose.rank ?? "—"}</td>
+                    <td>{pose.affinity ?? "—"}</td>
+                    <td>{pose.note ?? "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </DataCollapse>
       ) : (
         <p className="muted">
           Status text stored with provenance. Parsed pose affinities appear when

@@ -1,4 +1,5 @@
 import type { BlastNormalizedSearch } from "@/adapters/blast";
+import { DataCollapse } from "@/components/ui/DataCollapse";
 import type { ScientificJob } from "@/types/scientificJob";
 import { EmptyScientificPanel } from "@/components/module/EmptyScientificPanel";
 
@@ -72,32 +73,34 @@ export function BlastResults({
           The search returned zero hits. That is a real empty result.
         </p>
       ) : (
-        <div className="table-wrap">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Accession</th>
-                <th>Title</th>
-                <th>E-value</th>
-                <th>Bit score</th>
-                <th>Identity %</th>
-                <th>Align len</th>
-              </tr>
-            </thead>
-            <tbody>
-              {normalized.hits.map((hit, index) => (
-                <tr key={`${hit.accession ?? "hit"}-${index}`}>
-                  <td>{hit.accession ?? hit.hitId ?? "—"}</td>
-                  <td>{hit.title ?? "—"}</td>
-                  <td>{hit.evalue ?? "—"}</td>
-                  <td>{hit.bitScore ?? "—"}</td>
-                  <td>{hit.identityPct ?? "—"}</td>
-                  <td>{hit.alignmentLength ?? "—"}</td>
+        <DataCollapse label="Sequence-similarity hit table" count={normalized.hits.length} noun="hits">
+          <div className="table-wrap">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Accession</th>
+                  <th>Title</th>
+                  <th>E-value</th>
+                  <th>Bit score</th>
+                  <th>Identity %</th>
+                  <th>Align len</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {normalized.hits.map((hit, index) => (
+                  <tr key={`${hit.accession ?? "hit"}-${index}`}>
+                    <td>{hit.accession ?? hit.hitId ?? "—"}</td>
+                    <td>{hit.title ?? "—"}</td>
+                    <td>{hit.evalue ?? "—"}</td>
+                    <td>{hit.bitScore ?? "—"}</td>
+                    <td>{hit.identityPct ?? "—"}</td>
+                    <td>{hit.alignmentLength ?? "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </DataCollapse>
       )}
     </div>
   );

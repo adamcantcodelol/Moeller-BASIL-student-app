@@ -1,4 +1,5 @@
 import type { FoldseekNormalizedSearch } from "@/adapters/foldseek";
+import { DataCollapse } from "@/components/ui/DataCollapse";
 import type { ScientificJob } from "@/types/scientificJob";
 import { EmptyScientificPanel } from "@/components/module/EmptyScientificPanel";
 
@@ -40,36 +41,38 @@ export function FoldseekResults({
           Foldseek returned zero hits. That is a real empty result.
         </p>
       ) : (
-        <div className="table-wrap">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Target</th>
-                <th>SeqId</th>
-                <th>E-value</th>
-                <th>Score</th>
-                <th>Prob</th>
-                <th>Query</th>
-              </tr>
-            </thead>
-            <tbody>
-              {normalized.hits.map((hit, index) => (
-                <tr key={`${hit.target}-${index}`}>
-                  <td>{hit.target}</td>
-                  <td>{hit.seqId ?? "—"}</td>
-                  <td>{hit.eValue ?? "—"}</td>
-                  <td>{hit.score ?? "—"}</td>
-                  <td>{hit.probability ?? "—"}</td>
-                  <td>
-                    {hit.qStart !== null && hit.qEnd !== null
-                      ? `${hit.qStart}–${hit.qEnd}`
-                      : "—"}
-                  </td>
+        <DataCollapse label="Foldseek hit table" count={normalized.hits.length} noun="hits">
+          <div className="table-wrap">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Target</th>
+                  <th>SeqId</th>
+                  <th>E-value</th>
+                  <th>Score</th>
+                  <th>Prob</th>
+                  <th>Query</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {normalized.hits.map((hit, index) => (
+                  <tr key={`${hit.target}-${index}`}>
+                    <td>{hit.target}</td>
+                    <td>{hit.seqId ?? "—"}</td>
+                    <td>{hit.eValue ?? "—"}</td>
+                    <td>{hit.score ?? "—"}</td>
+                    <td>{hit.probability ?? "—"}</td>
+                    <td>
+                      {hit.qStart !== null && hit.qEnd !== null
+                        ? `${hit.qStart}–${hit.qEnd}`
+                        : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </DataCollapse>
       )}
     </div>
   );

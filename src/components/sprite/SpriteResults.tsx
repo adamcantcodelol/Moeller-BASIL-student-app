@@ -1,3 +1,4 @@
+import { DataCollapse } from "@/components/ui/DataCollapse";
 import type { SpriteNormalizedSearch } from "@/adapters/sprite";
 import type { ScientificJob } from "@/types/scientificJob";
 import { EmptyScientificPanel } from "@/components/module/EmptyScientificPanel";
@@ -170,14 +171,18 @@ export function SpriteResults({
           SPRITE returned zero matches. That is a real empty result.
         </p>
       ) : (
-        bands.map((band) => (
-          <section key={band.id} className="sprite-rmsd-band">
-            <h4>
-              {band.label}{" "}
-              <span className="muted">({band.hits.length})</span>
-            </h4>
+        bands.map((band, index) => (
+          <DataCollapse
+            key={band.id}
+            className="sprite-rmsd-band"
+            label={<strong>{band.label}</strong>}
+            count={band.hits.length}
+            noun={band.hits.length === 1 ? "match" : "matches"}
+            // Closest band open (unless huge); other bands start collapsed.
+            defaultOpen={index === 0 && band.hits.length <= 25}
+          >
             <HitsTable hits={band.hits} />
-          </section>
+          </DataCollapse>
         ))
       )}
     </div>

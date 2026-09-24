@@ -17,6 +17,10 @@ import type { FoldseekNormalizedSearch } from "@/adapters/foldseek";
 import type { DaliNormalizedSearch } from "@/adapters/dali";
 import type { InterProNormalizedAnnotation } from "@/adapters/interpro";
 import type { SwissDockNormalizedSearch } from "@/adapters/swissdock";
+import type { Evidence } from "@/types/evidence";
+import { DataCollapse } from "@/components/ui/DataCollapse";
+import { ExpandAllControl } from "@/components/results/ExpandAllControl";
+import { buildResultSummaryLine, defaultPanelOpen } from "@/lib/results/summaryLine";
 
 function StatusBadge({ status }: { status: ToolResultSection["status"] }) {
   return (
@@ -114,31 +118,105 @@ function ToolDeepBody({ section }: { section: ToolResultSection }) {
   return null;
 }
 
+function EvidencePanel({
+  projectId,
+  evidence,
+}: {
+  projectId: string;
+  evidence: Evidence[];
+}) {
+  const modules = new Set(evidence.map((item) => item.sourceModuleId).filter(Boolean));
+  const line =
+    evidence.length === 0
+      ? "No evidence residues recorded yet."
+      : `${evidence.length} record${evidence.length === 1 ? "" : "s"} from ${modules.size} module${modules.size === 1 ? "" : "s"}`;
+  return (
+    <details className="card result-section result-panel" id="result-evidence">
+      <summary className="result-panel-summary">
+        <span className="result-panel-title">
+          <strong>Active-site evidence</strong>{" "}
+          <span className={`result-status result-status-${evidence.length ? "succeeded" : "empty"}`}>
+            {evidence.length ? "recorded" : "empty"}
+          </span>
+        </span>
+        <span className="result-panel-line muted">{line}</span>
+      </summary>
+      <p>
+        <Link href={`/projects/${projectId}/modules/active-site-evidence`}>
+          Open Active-Site Evidence Synthesis
+        </Link>
+      </p>
+      {evidence.length > 0 ? (
+        <DataCollapse label="Evidence table" count={evidence.length} noun="records">
+          <div className="table-wrap">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Residue</th>
+                  <th>Module</th>
+                  <th>Strength</th>
+                  <th>Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                {evidence.map((item) => {
+                  const residue = item.residues?.[0];
+                  return (
+                    <tr key={item.id}>
+                      <td>
+                        {residue
+                          ? `${residue.chain ? `${residue.chain}:` : ""}${residue.position}${residue.aminoAcid ? ` (${residue.aminoAcid})` : ""}`
+                          : "—"}
+                      </td>
+                      <td>{item.sourceModuleId ?? "—"}</td>
+                      <td>{item.strength ?? "—"}</td>
+                      <td>{item.description}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </DataCollapse>
+      ) : null}
+    </details>
+  );
+}
+
 export function ResultsSections({
   projectId,
   sections,
   hasSequence,
+  evidence,
 }: {
   projectId: string;
   sections: ToolResultSection[];
   hasSequence: boolean;
+  evidence?: Evidence[];
 }) {
   return (
-    <div className="results-sections">
-      {sections.map((section) => (
-        <section
+    <div className="results-sections" id="results-panels">
+      <ExpandAllControl targetId="results-panels" />
+      {sections.map((section, index) => (
+        <details
           key={section.tool}
-          className="card result-section"
+          className="card result-section result-panel"
           id={`result-${section.tool}`}
+          open={defaultPanelOpen(section, index)}
         >
-          <header className="result-section-header">
-            <h2>
-              {section.label} <StatusBadge status={section.status} />
-            </h2>
+          <summary className="result-panel-summary">
+            <span className="result-panel-title">
+              <strong>{section.label}</strong> <StatusBadge status={section.status} />
+            </span>
+            <span className="result-panel-line muted">
+              {buildResultSummaryLine(section)}
+            </span>
+          </summary>
+          <p>
             <Link href={`/projects/${projectId}/modules/${section.moduleSlug}`}>
               Open module page
             </Link>
-          </header>
+          </p>
           <LabExplainer labKey={section.tool} />
           <p>{section.summary}</p>
           {section.provenanceSource ? (
@@ -172,8 +250,9 @@ export function ResultsSections({
             <RunCleanButton projectId={projectId} hasSequence={hasSequence} />
           ) : null}
           <ToolDeepBody section={section} />
-        </section>
+        </details>
       ))}
+      {evidence ? <EvidencePanel projectId={projectId} evidence={evidence} /> : null}
     </div>
   );
 }

@@ -13,6 +13,7 @@ import {
   extractLigandFromPdbText,
   parseChemCompSmiles,
 } from "@/adapters/swissdock/extractLigand";
+import { readZipEntry } from "@/adapters/swissdock/zip";
 import { validatePdbId } from "@/lib/validation/pdbId";
 import { nowIso } from "@/lib/ids";
 import { buildProvenance } from "@/lib/provenance/buildProvenance";
@@ -33,20 +34,27 @@ function parseSessionNumber(text: string): string | null {
   return match?.[1] ?? null;
 }
 
-function isFinishedStatus(text: string): boolean {
-  return /finished|completed|done|ready to retrieve|retrievesession/i.test(
-    text,
-  );
+/** checkstatus wording (swissdock.ch/command-line.php, verified live 2026-09). */
+export function classifySwissDockStatus(
+  text: string,
+): "finished" | "running" | "refused" | "unknown" {
+  if (/calculation is finished/i.test(text)) return "finished";
+  if (/cannot be run|cannot be submitted|change some parameters|\bERROR\b|impossible|was cancelled|not found/i.test(text)) {
+    return "refused";
+  }
+  if (/in the queue|currently running|has been submitted/i.test(text)) return "running";
+  return "unknown";
 }
 
-function isFailedStatus(text: string): boolean {
-  return /\bERROR\b|\bfailed\b|\bimpossible\b/i.test(text);
-}
-
-function isStillRunning(text: string): boolean {
-  return /running|queued|preparing|please wait|in progress|submitted/i.test(
-    text,
-  );
+/** Short, student-safe excerpt of SwissDock's own message. */
+function excerpt(text: string): string {
+  return text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line && !/^curl |to check your session|please run the following/i.test(line))
+    .filter((line) => /cannot|change|error|impossible|estimated|cancel|not found|empty|cavity/i.test(line))
+    .join(" ")
+    .slice(0, 240);
 }
 
 export class SwissDockSearchAdapter
@@ -272,6 +280,12 @@ export class SwissDockSearchAdapter
         `SwissDock setparameters returned HTTP ${paramsRes.status}.`,
       );
     }
+    if (!/can be submitted/i.test(paramsText)) {
+      throw new SwissDockAdapterError(
+        "FAILED",
+        `SwissDock would not accept this docking setup${excerpt(paramsText) ? `: "${excerpt(paramsText)}"` : ""}. No poses were invented.`,
+      );
+    }
 
     // 4) startdock
     const startUrl = `${SWISSDOCK_API_BASE}/startdock?sessionNumber=${encodeURIComponent(sessionNumber)}`;
@@ -285,6 +299,12 @@ export class SwissDockSearchAdapter
       throw new SwissDockAdapterError(
         "NETWORK",
         `SwissDock startdock returned HTTP ${startRes.status}.`,
+      );
+    }
+    if (!/has been submitted/i.test(startText)) {
+      throw new SwissDockAdapterError(
+        "FAILED",
+        `SwissDock did not start the docking${excerpt(startText) ? `: "${excerpt(startText)}"` : ""}. No poses were invented.`,
       );
     }
 
@@ -339,17 +359,16 @@ export class SwissDockSearchAdapter
       );
     }
 
-    if (isFailedStatus(statusText) && !isFinishedStatus(statusText)) {
-      // Distinguish hard failures from "must contain ligand" early messages
-      if (/Impossible|ERROR:/i.test(statusText)) {
-        throw new SwissDockAdapterError(
-          "FAILED",
-          `SwissDock reported failure for session ${sessionNumber}. No poses were invented.`,
-        );
-      }
+    const state = classifySwissDockStatus(statusText);
+    if (state === "refused") {
+      throw new SwissDockAdapterError(
+        "FAILED",
+        `SwissDock refused or ended session ${sessionNumber}${excerpt(statusText) ? `: "${excerpt(statusText)}"` : ""}. No poses were invented.`,
+      );
     }
 
-    if (isFinishedStatus(statusText) && !isStillRunning(statusText)) {
+    if (state === "finished") {
+      const resultsText = await this.retrieveVinaResults(sessionNumber);
       this.setProvenance(
         {
           sessionNumber,
@@ -357,6 +376,7 @@ export class SwissDockSearchAdapter
           smiles,
           phase: "ready",
           api: SWISSDOCK_API_BASE,
+          resultsFile: "retrievesession → vina_dock.pdbqt",
         },
         retrievedAt,
       );
@@ -366,7 +386,7 @@ export class SwissDockSearchAdapter
         smiles,
         statusText,
         phase: "ready",
-        resultsText: statusText,
+        resultsText,
       };
     }
 
@@ -395,6 +415,39 @@ export class SwissDockSearchAdapter
       "PENDING",
       `SwissDock session ${sessionNumber} is still running.`,
     );
+  }
+
+  /** Download results.zip and keep only the real Vina score lines. */
+  private async retrieveVinaResults(sessionNumber: string): Promise<string> {
+    const url = `${SWISSDOCK_API_BASE}/retrievesession?sessionNumber=${encodeURIComponent(sessionNumber)}`;
+    const res = await this.fetchWithTimeout(url, undefined, "retrievesession");
+    if (!res.ok) {
+      throw new SwissDockAdapterError(
+        "NETWORK",
+        `SwissDock retrievesession returned HTTP ${res.status}. No poses were invented.`,
+      );
+    }
+    const bytes = new Uint8Array(await res.arrayBuffer());
+    let entry: { name: string; text: string } | null = null;
+    try {
+      entry = await readZipEntry(bytes, (name) => /(^|\/)vina_dock\.pdbqt$/i.test(name));
+    } catch (error) {
+      throw new SwissDockAdapterError(
+        "INVALID_RESPONSE",
+        "SwissDock results archive could not be read. No poses were invented.",
+        error,
+      );
+    }
+    const lines = entry?.text
+      .split(/\r?\n/)
+      .filter((line) => /^REMARK VINA RESULT:/i.test(line.trim()));
+    if (!lines || lines.length === 0) {
+      throw new SwissDockAdapterError(
+        "INVALID_RESPONSE",
+        "SwissDock finished but its results had no Vina poses. No poses were invented.",
+      );
+    }
+    return lines.join("\n");
   }
 
   normalize(output: SwissDockRawPayload): SwissDockNormalizedSearch {

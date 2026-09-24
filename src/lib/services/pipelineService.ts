@@ -266,6 +266,31 @@ function cleanUnavailablePatch(
   };
 }
 
+/** SwissDock Vina jobs are capped at ~10 min of compute; allow queue time too. */
+export const SWISSDOCK_PIPELINE_TIMEOUT_MS = 20 * 60_000;
+const SWISSDOCK_POLL_INTERVAL_MS = 15_000;
+
+export function isSwissDockStepTimedOut(step: PipelineStep, now = Date.now()): boolean {
+  const startedMs = step.startedAt ? Date.parse(step.startedAt) : NaN;
+  return !Number.isFinite(startedMs) || now - startedMs >= SWISSDOCK_PIPELINE_TIMEOUT_MS;
+}
+
+/** Honest, retryable SwissDock outcome (never blocks BLAST/Results/Hypothesis). */
+export function swissDockUnavailablePatch(
+  timestamp: string,
+  detail: string,
+): Partial<PipelineStep> {
+  return {
+    status: "unavailable",
+    finishedAt: timestamp,
+    summary: `SwissDock unavailable — ${detail} Press Retry, or import SwissDock results on the SwissDock module page. The rest of the analysis is unaffected.`,
+    error: null,
+    skipReason: null,
+    nextPollAt: null,
+    unavailableDetail: detail,
+  };
+}
+
 async function submitOrSkipStep(
   db: AppDatabase,
   projectId: string,
@@ -428,7 +453,10 @@ async function submitOrSkipStep(
           summary,
           error: null,
           skipReason: null,
-          nextPollAt: null,
+          nextPollAt:
+            step.tool === "swissdock"
+              ? new Date(Date.now() + SWISSDOCK_POLL_INTERVAL_MS).toISOString()
+              : null,
         }),
       };
     }
@@ -462,6 +490,16 @@ async function submitOrSkipStep(
           skipReason: message,
           summary: "Skipped — no ligand SMILES available",
           error: null,
+        }),
+      };
+    }
+
+    if (step.tool === "swissdock") {
+      return {
+        waiting: false,
+        steps: patchStep(steps, index, {
+          startedAt: timestamp,
+          ...swissDockUnavailablePatch(nowIso(), message),
         }),
       };
     }
@@ -584,10 +622,40 @@ async function pollRunningStep(
         };
       }
     } else if (step.tool === "swissdock") {
+      const startedMs = step.startedAt ? Date.parse(step.startedAt) : NaN;
+      const elapsedMs = Number.isFinite(startedMs) ? Date.now() - startedMs : Infinity;
+      if (elapsedMs >= SWISSDOCK_PIPELINE_TIMEOUT_MS) {
+        const minutes = Math.round(SWISSDOCK_PIPELINE_TIMEOUT_MS / 60_000);
+        const detail = `SwissDock did not finish within ${minutes} minutes (its public queue may be busy or the session stalled). No poses were invented.`;
+        try {
+          await markJobFailed(db, step.jobId, detail);
+        } catch (markError) {
+          console.error(
+            "[pipeline] could not mark timed-out SwissDock job failed:",
+            toSafeErrorMessage(markError, "unknown"),
+          );
+        }
+        return {
+          waiting: false,
+          steps: patchStep(steps, index, swissDockUnavailablePatch(nowIso(), detail)),
+        };
+      }
+      if (step.nextPollAt && Date.parse(step.nextPollAt) > Date.now()) {
+        return { waiting: true, steps };
+      }
       const result = await pollSwissDockJob(db, projectId, step.jobId);
       pending = result.pending;
       if (!pending) {
         summary = `SwissDock complete (${result.normalized?.poseCount ?? 0} poses)`;
+      } else {
+        return {
+          waiting: true,
+          steps: patchStep(steps, index, {
+            status: "running",
+            summary: `SwissDock docking at swissdock.ch (${Math.max(1, Math.round(elapsedMs / 60_000))} min elapsed; times out at ${Math.round(SWISSDOCK_PIPELINE_TIMEOUT_MS / 60_000)} min). Other tools and Results keep working.`,
+            nextPollAt: new Date(Date.now() + SWISSDOCK_POLL_INTERVAL_MS).toISOString(),
+          }),
+        };
       }
     } else {
       return {
@@ -646,6 +714,13 @@ async function pollRunningStep(
           summary: "Skipped — no ligand SMILES available",
           error: null,
         }),
+      };
+    }
+
+    if (step.tool === "swissdock") {
+      return {
+        waiting: false,
+        steps: patchStep(steps, index, swissDockUnavailablePatch(nowIso(), message)),
       };
     }
 
@@ -809,7 +884,9 @@ export async function retryPipelineStep(
   if (!step) {
     throw new ServiceError(`Pipeline has no ${tool} step.`, 400);
   }
-  if (step.status !== "unavailable" && step.status !== "failed") {
+  const stalledSwissDock =
+    tool === "swissdock" && step.status === "running" && isSwissDockStepTimedOut(step);
+  if (step.status !== "unavailable" && step.status !== "failed" && !stalledSwissDock) {
     throw new ServiceError(
       `${step.label} is ${step.status}; only unavailable or failed steps can be retried.`,
       400,
@@ -1001,6 +1078,26 @@ export async function getProjectResultsSections(
           provenanceRetrievedAt: null,
           normalized: null,
           error: pipeStep?.error ?? latestJob?.error ?? "Unknown failure",
+          skipReason: null,
+        });
+        return;
+      }
+      if (
+        tool === "swissdock" &&
+        pipeStep?.status === "running" &&
+        isSwissDockStepTimedOut(pipeStep)
+      ) {
+        const minutes = Math.round(SWISSDOCK_PIPELINE_TIMEOUT_MS / 60_000);
+        sections.push({
+          tool,
+          label: pipeStep.label,
+          moduleSlug: tool,
+          status: "unavailable",
+          summary: `SwissDock unavailable — no result after ${minutes} minutes. No poses were invented. Press Retry, or import SwissDock results on the module page.`,
+          provenanceSource: null,
+          provenanceRetrievedAt: null,
+          normalized: null,
+          error: null,
           skipReason: null,
         });
         return;

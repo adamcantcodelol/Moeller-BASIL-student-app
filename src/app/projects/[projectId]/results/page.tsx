@@ -6,6 +6,7 @@ import { ResultsSections } from "@/components/results/ResultsSections";
 import { getProjectPageDatabase } from "@/lib/db/request";
 import { getProjectOverview, ServiceError } from "@/lib/services/projectService";
 import { getProjectResultsSections } from "@/lib/services/pipelineService";
+import { listEvidenceForProject } from "@/lib/services/evidenceService";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +25,10 @@ export default async function ResultsPage({
       throw error;
     },
   );
-  const { pipeline, sections } = await getProjectResultsSections(db, projectId);
+  const [{ pipeline, sections }, evidence] = await Promise.all([
+    getProjectResultsSections(db, projectId),
+    listEvidenceForProject(db, projectId).catch(() => null),
+  ]);
   const hasSequence = Boolean(
     overview.structure?.sequence &&
       overview.structure.sequence.replace(/[^A-Za-z]/g, "").length >= 10,
@@ -57,6 +61,7 @@ export default async function ResultsPage({
         projectId={projectId}
         sections={sections}
         hasSequence={hasSequence}
+        evidence={evidence ?? undefined}
       />
     </AppShell>
   );

@@ -25,6 +25,52 @@ const SKIP_RESIDUES = new Set([
   "ZN",
   "ACT",
   "ACE",
+  "FMT",
+  "MPD",
+  "TRS",
+  "BME",
+  "EPE",
+  "MES",
+  "NH4",
+  "IOD",
+  "BR",
+  "MN",
+  "FE",
+  "FE2",
+  "CU",
+  "CO",
+  "NI",
+  "CD",
+  "HG",
+  "UNX",
+]);
+
+/**
+ * Modified amino acids that are part of the protein chain (not ligands),
+ * e.g. selenomethionine (MSE) in SAD-phased structures. MODRES records in the
+ * PDB file are also honored.
+ */
+const POLYMER_MODIFIED_RESIDUES = new Set([
+  "MSE",
+  "SEP",
+  "TPO",
+  "PTR",
+  "CSO",
+  "CSD",
+  "CME",
+  "OCS",
+  "KCX",
+  "LLP",
+  "HYP",
+  "MLY",
+  "M3L",
+  "PCA",
+  "CGU",
+  "SEC",
+  "PYL",
+  "NLE",
+  "ALY",
+  "CSX",
 ]);
 
 export interface ExtractedLigand {
@@ -37,7 +83,7 @@ export interface ExtractedLigand {
 }
 
 /**
- * Pick the most common non-solvent HETATM residue and compute its centroid.
+ * Pick the largest non-solvent, non-polymer HETATM residue instance and compute its centroid.
  * Never invents a ligand — returns null when none are present.
  */
 export function extractLigandFromPdbText(
@@ -47,8 +93,15 @@ export function extractLigandFromPdbText(
     string,
     { resName: string; chain: string; xs: number[]; ys: number[]; zs: number[] }
   >();
+  const lines = pdbText.split(/\r?\n/);
+  const modres = new Set(
+    lines
+      .filter((line) => line.startsWith("MODRES"))
+      .map((line) => line.slice(12, 15).trim().toUpperCase())
+      .filter(Boolean),
+  );
 
-  for (const line of pdbText.split(/\r?\n/)) {
+  for (const line of lines) {
     if (!line.startsWith("HETATM")) continue;
     let resName = line.length >= 20 ? line.slice(17, 20).trim().toUpperCase() : "";
     let chain = line.length >= 22 ? (line[21] ?? "A").trim() || "A" : "A";
@@ -78,8 +131,11 @@ export function extractLigandFromPdbText(
       }
     }
     if (!resName || SKIP_RESIDUES.has(resName)) continue;
+    if (POLYMER_MODIFIED_RESIDUES.has(resName) || modres.has(resName)) continue;
     if (![x, y, z].every((n) => Number.isFinite(n))) continue;
-    const key = `${resName}|${chain}`;
+    // One group per residue instance so the box centers on a single copy.
+    const resSeq = line.length >= 27 ? line.slice(22, 27).trim() : "";
+    const key = `${resName}|${chain}|${resSeq}`;
     const existing = groups.get(key);
     if (existing) {
       existing.xs.push(x);

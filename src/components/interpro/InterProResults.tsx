@@ -1,4 +1,5 @@
 import type { InterProNormalizedAnnotation } from "@/adapters/interpro";
+import { DataCollapse } from "@/components/ui/DataCollapse";
 import type { ScientificJob } from "@/types/scientificJob";
 import { EmptyScientificPanel } from "@/components/module/EmptyScientificPanel";
 
@@ -56,54 +57,56 @@ export function InterProResults({
           real empty result, not fabricated data.
         </p>
       ) : (
-        <div className="table-wrap">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Accession</th>
-                <th>Type</th>
-                <th>Name</th>
-                <th>Locations</th>
-                <th>GO terms</th>
-              </tr>
-            </thead>
-            <tbody>
-              {normalized.entries.map((entry) => (
-                <tr key={entry.accession}>
-                  <td>
-                    <a
-                      href={`https://www.ebi.ac.uk/interpro/entry/InterPro/${entry.accession}/`}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      {entry.accession}
-                    </a>
-                  </td>
-                  <td>{entry.type}</td>
-                  <td>{entry.name}</td>
-                  <td>
-                    {entry.locations.length === 0
-                      ? "—"
-                      : entry.locations
-                          .map((loc) => `${loc.start}–${loc.end}`)
-                          .join(", ")}
-                  </td>
-                  <td>
-                    {entry.goTerms.length === 0
-                      ? "—"
-                      : entry.goTerms
-                          .slice(0, 3)
-                          .map((term) => term.id)
-                          .join(", ")}
-                    {entry.goTerms.length > 3
-                      ? ` (+${entry.goTerms.length - 3})`
-                      : ""}
-                  </td>
+        <DataCollapse label="InterPro entries (domains, families, sites)" count={normalized.entries.length} noun="entries">
+          <div className="table-wrap">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Accession</th>
+                  <th>Type</th>
+                  <th>Name</th>
+                  <th>Locations</th>
+                  <th>GO terms</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {normalized.entries.map((entry) => (
+                  <tr key={entry.accession}>
+                    <td>
+                      <a
+                        href={`https://www.ebi.ac.uk/interpro/entry/InterPro/${entry.accession}/`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        {entry.accession}
+                      </a>
+                    </td>
+                    <td>{entry.type}</td>
+                    <td>{entry.name}</td>
+                    <td>
+                      {entry.locations.length === 0
+                        ? "—"
+                        : entry.locations
+                            .map((loc) => `${loc.start}–${loc.end}`)
+                            .join(", ")}
+                    </td>
+                    <td>
+                      {entry.goTerms.length === 0
+                        ? "—"
+                        : entry.goTerms
+                            .slice(0, 3)
+                            .map((term) => term.id)
+                            .join(", ")}
+                      {entry.goTerms.length > 3
+                        ? ` (+${entry.goTerms.length - 3})`
+                        : ""}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </DataCollapse>
       )}
 
       <EmptyScientificPanel

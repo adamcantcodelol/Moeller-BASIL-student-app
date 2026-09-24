@@ -729,3 +729,54 @@ button.chip-button {
   white-space: pre-wrap;
   margin: 0.3rem 0;
 }
+
+/* Collapsible Results panels + data tables */
+.expand-all-row {
+  justify-content: flex-end;
+  margin-bottom: 0.5rem;
+}
+
+.result-panel > summary.result-panel-summary {
+  cursor: pointer;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.75rem;
+  list-style: none;
+  font-size: 1.1rem;
+}
+
+.result-panel > summary.result-panel-summary::-webkit-details-marker {
+  display: none;
+}
+
+.result-panel > summary.result-panel-summary::before {
+  content: "▸";
+  display: inline-block;
+  width: 1rem;
+  transition: transform 0.15s ease;
+}
+
+.result-panel[open] > summary.result-panel-summary::before {
+  transform: rotate(90deg);
+}
+
+.result-panel[open] > summary.result-panel-summary {
+  margin-bottom: 0.6rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.result-panel-line {
+  font-size: 0.9rem;
+}
+
+.data-collapse {
+  margin: 0.5rem 0;
+}
+
+.data-collapse > summary {
+  cursor: pointer;
+  font-weight: 600;
+  padding: 0.25rem 0;
+}

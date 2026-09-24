@@ -16,6 +16,19 @@ export function parseSwissDockStatusText(
   const lines = text.split(/\r?\n/);
   let rank = 0;
   for (const line of lines) {
+    // AutoDock Vina: "REMARK VINA RESULT:  -4.477  0.000  0.000" (kcal/mol, RMSD l.b., u.b.)
+    const vina = line.match(
+      /VINA RESULT:\s*(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)/i,
+    );
+    if (vina) {
+      rank += 1;
+      poses.push({
+        rank,
+        affinity: Number(vina[1]),
+        note: `Vina ${vina[1]} kcal/mol · RMSD from best pose l.b. ${vina[2]} / u.b. ${vina[3]} Å`,
+      });
+      continue;
+    }
     const match = line.match(
       /(?:affinity|energy|score)\s*[:=]?\s*(-?\d+(?:\.\d+)?)/i,
     );
