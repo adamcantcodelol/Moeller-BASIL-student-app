@@ -58,7 +58,6 @@ import {
   isCleanUnavailableError,
   listCleanResults,
   pollCleanJob,
-  submitCleanPrediction,
 } from "@/lib/services/cleanService";
 import {
   CLEAN_UNAVAILABLE_MESSAGE,
@@ -251,9 +250,6 @@ type TickActionResult = {
   suggestedWaitMs?: number;
 };
 
-/** First CLEAN status check ~20s after submit (observed runtime ~77s). */
-const CLEAN_FIRST_POLL_DELAY_MS = 20_000;
-
 function cleanUnavailablePatch(
   timestamp: string,
   detail: string,
@@ -278,6 +274,20 @@ async function submitOrSkipStep(
   steps: PipelineStep[],
 ): Promise<TickActionResult> {
   const timestamp = nowIso();
+
+  if (step.tool === "clean") {
+    return {
+      waiting: false,
+      steps: patchStep(steps, index, {
+        status: "skipped",
+        finishedAt: timestamp,
+        summary: "Optional: run CLEAN from the Results page when you need it",
+        skipReason:
+          "CLEAN is student-requested and is not run by the classroom pipeline.",
+        error: null,
+      }),
+    };
+  }
 
   if (step.tool === "interpro") {
     const structure = await getStructureByProjectId(db, projectId);
@@ -390,13 +400,6 @@ async function submitOrSkipStep(
       summary = pending
         ? "Dali submitted — waiting for job page"
         : `Dali complete (${result.normalized?.hitCount ?? 0} hits)`;
-    } else if (step.tool === "clean") {
-      const result = await submitCleanPrediction(db, projectId);
-      jobId = result.job.id;
-      pending = result.pending;
-      summary = pending
-        ? "CLEAN submitted to UIUC MoleculeMaker — predicting EC numbers (~1–2 min)"
-        : `CLEAN complete (${result.normalized?.predictionCount ?? 0} EC predictions)`;
     } else if (step.tool === "swissdock") {
       const result = await submitSwissDock(db, projectId);
       jobId = result.job.id;
@@ -425,10 +428,7 @@ async function submitOrSkipStep(
           summary,
           error: null,
           skipReason: null,
-          nextPollAt:
-            step.tool === "clean"
-              ? new Date(Date.now() + CLEAN_FIRST_POLL_DELAY_MS).toISOString()
-              : null,
+          nextPollAt: null,
         }),
       };
     }
@@ -451,13 +451,6 @@ async function submitOrSkipStep(
       `${step.label} failed without fabricating results.`,
     );
     console.error(`[pipeline] ${step.tool} submit failed:`, describeErrorForLog(error));
-
-    if (step.tool === "clean" && isCleanUnavailableError(error)) {
-      return {
-        waiting: false,
-        steps: patchStep(steps, index, cleanUnavailablePatch(timestamp, error.detail)),
-      };
-    }
 
     if (step.tool === "swissdock" && isLigandMissingError(message)) {
       return {

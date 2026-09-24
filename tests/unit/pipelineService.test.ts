@@ -370,7 +370,7 @@ describe("pipelineService tick flow", () => {
     expect(next.pipeline.steps[3]?.status).toBe("succeeded");
   });
 
-  it("marks CLEAN unavailable (not a fake result) when MoleculeMaker storage is down; SwissDock skipped when ligand missing; InterPro runs", async () => {
+  it("skips CLEAN in the classroom pipeline; SwissDock skips when ligand is missing; InterPro runs", async () => {
     const { db, project } = await seedRcsbProject();
     await startPipeline(db, project.id);
 
@@ -395,51 +395,37 @@ describe("pipelineService tick flow", () => {
     expect(byTool.foldseek).toBe("succeeded");
     expect(byTool.dali).toBe("succeeded");
     expect(byTool.interpro).toBe("succeeded");
-    expect(byTool.clean).toBe("unavailable");
+    expect(byTool.clean).toBe("skipped");
     const cleanStep = final!.steps.find((s) => s.tool === "clean")!;
-    expect(cleanStep.summary).toMatch(/can't return results right now/);
-    expect(cleanStep.unavailableDetail).toMatch(/HTTP 500/);
+    expect(cleanStep.summary).toBe(
+      "Optional: run CLEAN from the Results page when you need it",
+    );
+    expect(cleanStep.skipReason).toMatch(/student-requested/);
     expect(cleanStep.error).toBeNull();
+    const clean = await import("@/lib/services/cleanService");
+    expect(clean.submitCleanPrediction).not.toHaveBeenCalled();
     expect(byTool.swissdock).toBe("skipped");
     expect(final!.status).toBe("completed");
 
     const { sections } = await getProjectResultsSections(db, project.id);
     const cleanSection = sections.find((s) => s.tool === "clean")!;
-    expect(cleanSection.status).toBe("unavailable");
+    expect(cleanSection.status).toBe("skipped");
     expect(cleanSection.normalized).toBeNull();
   });
 
-  it("Retry re-queues only the CLEAN step and resumes the pipeline", async () => {
+  it("does not auto-submit CLEAN; the student must use the manual CLEAN button", async () => {
     const clean = await import("@/lib/services/cleanService");
+    vi.mocked(clean.submitCleanPrediction).mockClear();
     const { db, project } = await seedRcsbProject();
     await startPipeline(db, project.id);
     for (let i = 0; i < 20; i += 1) {
       const result = await tickPipeline(db, project.id);
       if (result.pipeline.status !== "running") break;
     }
-    const retried = await retryPipelineStep(db, project.id, "clean");
-    expect(retried.status).toBe("running");
-    expect(retried.steps.find((s) => s.tool === "clean")?.status).toBe("pending");
-    expect(retried.steps.find((s) => s.tool === "sprite")?.status).toBe("succeeded");
-
-    vi.mocked(clean.submitCleanPrediction).mockResolvedValueOnce({
-      job: { id: "clean-job", status: "running" } as never,
-      pending: true,
-      mmliJobId: "mmli-9",
-      normalized: null,
-      health: null,
-    });
-    const tick = await tickPipeline(db, project.id);
-    const step = tick.pipeline.steps.find((s) => s.tool === "clean")!;
-    expect(step.status).toBe("running");
-    expect(step.nextPollAt).toBeTruthy();
-    // Poll spacing: an immediate tick does not call upstream again.
-    await tickPipeline(db, project.id);
-    expect(vi.mocked(clean.pollCleanJob)).not.toHaveBeenCalled();
-
-    await expect(
-      retryPipelineStep(db, project.id, "sprite"),
-    ).rejects.toThrow(/only unavailable or failed/);
+    const final = await getPipelineStatus(db, project.id);
+    const step = final!.steps.find((s) => s.tool === "clean")!;
+    expect(step.status).toBe("skipped");
+    expect(clean.submitCleanPrediction).not.toHaveBeenCalled();
   });
 
   it("skips InterPro when no UniProt accession in metadata", async () => {

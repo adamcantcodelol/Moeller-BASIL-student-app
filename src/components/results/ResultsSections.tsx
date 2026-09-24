@@ -9,6 +9,7 @@ import { InterProResults } from "@/components/interpro/InterProResults";
 import { SwissDockResults } from "@/components/swissdock/SwissDockResults";
 import { LabExplainer } from "@/components/module/LabExplainer";
 import { CleanResults } from "@/components/clean/CleanResults";
+import { RunCleanButton } from "@/components/clean/RunCleanButton";
 import { RetryStepButton } from "@/components/pipeline/RetryStepButton";
 import type { CleanNormalizedResult } from "@/adapters/clean";
 import type { BlastNormalizedSearch } from "@/adapters/blast";
@@ -116,9 +117,11 @@ function ToolDeepBody({ section }: { section: ToolResultSection }) {
 export function ResultsSections({
   projectId,
   sections,
+  hasSequence,
 }: {
   projectId: string;
   sections: ToolResultSection[];
+  hasSequence: boolean;
 }) {
   return (
     <div className="results-sections">
@@ -164,6 +167,9 @@ export function ResultsSections({
                 or import a CSV
               </Link>
             </p>
+          ) : null}
+          {section.tool === "clean" ? (
+            <RunCleanButton projectId={projectId} hasSequence={hasSequence} />
           ) : null}
           <ToolDeepBody section={section} />
         </section>

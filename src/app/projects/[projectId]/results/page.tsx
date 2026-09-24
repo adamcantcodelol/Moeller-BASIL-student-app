@@ -25,6 +25,10 @@ export default async function ResultsPage({
     },
   );
   const { pipeline, sections } = await getProjectResultsSections(db, projectId);
+  const hasSequence = Boolean(
+    overview.structure?.sequence &&
+      overview.structure.sequence.replace(/[^A-Za-z]/g, "").length >= 10,
+  );
 
   return (
     <AppShell projectId={projectId} moduleRuns={overview.moduleRuns}>
@@ -49,7 +53,11 @@ export default async function ResultsPage({
           </Link>
         </div>
       </section>
-      <ResultsSections projectId={projectId} sections={sections} />
+      <ResultsSections
+        projectId={projectId}
+        sections={sections}
+        hasSequence={hasSequence}
+      />
     </AppShell>
   );
 }
