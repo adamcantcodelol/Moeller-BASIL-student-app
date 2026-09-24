@@ -6,16 +6,27 @@ import { getRequestDatabase } from "@/lib/db/request";
 import { listProjects } from "@/lib/services/projectService";
 import { LoadDemoButton } from "@/components/dashboard/LoadDemoButton";
 import { CURRICULUM_MODULES } from "@/modules/registry";
+import { JoinClassForm } from "@/components/identity/JoinClassForm";
+import { MoveDeviceProjectsButton } from "@/components/identity/MoveDeviceProjectsButton";
+import { getRequestIdentity } from "@/lib/auth/request";
+import { ownerForIdentity } from "@/lib/auth/identity";
+import { countDeviceProjects } from "@/lib/db/queries/projects";
 
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
   let projects: Awaited<ReturnType<typeof listProjects>> = [];
   let databaseError: string | null = null;
+  let deviceProjectCount = 0;
+  const identity = await getRequestIdentity();
 
   try {
     const db = await getRequestDatabase();
-    projects = await listProjects(db);
+    // Only this student's (or this computer's) projects — never everyone's.
+    projects = await listProjects(db, ownerForIdentity(identity));
+    if (identity.student && identity.deviceId) {
+      deviceProjectCount = await countDeviceProjects(db, identity.deviceId);
+    }
   } catch {
     databaseError =
       "The local D1 database is not available yet. Run npm run db:migrate:local, then npm run db:seed-demo if you want the labeled demonstration project.";
@@ -35,8 +46,17 @@ export default async function DashboardPage() {
         </p>
       </section>
       {databaseError ? <p className="error">{databaseError}</p> : null}
+      {identity.student ? null : (
+        <section className="card">
+          <h2>Join your class (optional)</h2>
+          <JoinClassForm />
+        </section>
+      )}
       <section className="card">
-        <h2>Projects</h2>
+        <h2>{identity.student ? "Your projects" : "Projects on this computer"}</h2>
+        {deviceProjectCount > 0 ? (
+          <MoveDeviceProjectsButton count={deviceProjectCount} />
+        ) : null}
         <ProjectList projects={projects} />
         <LoadDemoButton />
       </section>

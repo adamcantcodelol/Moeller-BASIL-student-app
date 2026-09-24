@@ -1,4 +1,4 @@
-import { getRequestDatabase } from "@/lib/db/request";
+import { getProjectDatabase } from "@/lib/db/request";
 import { handleServiceError, jsonError } from "@/lib/http";
 import { importToolResults } from "@/lib/services/importToolService";
 import { IMPORT_FORMATS, type ImportFormat } from "@/types/importWorkflow";
@@ -25,7 +25,7 @@ export async function POST(
         400,
       );
     }
-    const db = await getRequestDatabase();
+    const db = await getProjectDatabase(projectId);
     const result = await importToolResults(db, projectId, moduleSlug, {
       format: body.format as ImportFormat,
       content: body.content,

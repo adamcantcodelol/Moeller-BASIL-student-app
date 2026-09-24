@@ -1,4 +1,4 @@
-import { getRequestDatabase } from "@/lib/db/request";
+import { getProjectDatabase } from "@/lib/db/request";
 import { handleServiceError, jsonError } from "@/lib/http";
 import {
   createEvidenceRecord,
@@ -14,7 +14,7 @@ export async function GET(
 ) {
   try {
     const { projectId } = await context.params;
-    const db = await getRequestDatabase();
+    const db = await getProjectDatabase(projectId);
     return Response.json({
       evidence: await listEvidenceForProject(db, projectId),
     });
@@ -30,7 +30,7 @@ export async function POST(
   try {
     const { projectId } = await context.params;
     const body = (await request.json()) as CreateEvidenceInput;
-    const db = await getRequestDatabase();
+    const db = await getProjectDatabase(projectId);
     const created = await createEvidenceRecord(db, projectId, body);
     return Response.json({ evidence: created }, { status: 201 });
   } catch (error) {

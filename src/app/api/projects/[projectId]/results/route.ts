@@ -1,4 +1,4 @@
-import { getRequestDatabase } from "@/lib/db/request";
+import { getProjectDatabase } from "@/lib/db/request";
 import { handleServiceError } from "@/lib/http";
 import { getProjectResultsSections } from "@/lib/services/pipelineService";
 
@@ -10,7 +10,7 @@ export async function GET(
 ) {
   try {
     const { projectId } = await context.params;
-    const db = await getRequestDatabase();
+    const db = await getProjectDatabase(projectId);
     return Response.json(await getProjectResultsSections(db, projectId));
   } catch (error) {
     return handleServiceError(error);

@@ -5,7 +5,7 @@ import { DemoBanner } from "@/components/demo/DemoBanner";
 import { ModuleCardList } from "@/components/project/ModuleCard";
 import { ProjectStatus } from "@/components/project/ProjectStatus";
 import { StartAnalysisButton } from "@/components/pipeline/StartAnalysisButton";
-import { getRequestDatabase } from "@/lib/db/request";
+import { getProjectPageDatabase } from "@/lib/db/request";
 import { getProjectOverview, ServiceError } from "@/lib/services/projectService";
 import { getPipelineStatus } from "@/lib/services/pipelineService";
 
@@ -17,7 +17,7 @@ export default async function ProjectPage({
   params: Promise<{ projectId: string }>;
 }) {
   const { projectId } = await params;
-  const db = await getRequestDatabase();
+  const db = await getProjectPageDatabase(projectId);
   const overview = await getProjectOverview(db, projectId).catch(
     (error: unknown) => {
       if (error instanceof ServiceError && error.status === 404) {

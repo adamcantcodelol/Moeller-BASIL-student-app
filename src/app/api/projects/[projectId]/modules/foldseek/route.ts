@@ -1,4 +1,4 @@
-import { getRequestDatabase } from "@/lib/db/request";
+import { getProjectDatabase } from "@/lib/db/request";
 import { handleServiceError, jsonError } from "@/lib/http";
 import {
   completeFoldseekModule,
@@ -14,7 +14,7 @@ export async function GET(
 ) {
   try {
     const { projectId } = await context.params;
-    const db = await getRequestDatabase();
+    const db = await getProjectDatabase(projectId);
     return Response.json(await listFoldseekResults(db, projectId));
   } catch (error) {
     return handleServiceError(error);
@@ -33,7 +33,7 @@ export async function POST(
       const body = (await request.json()) as { pdbId?: string };
       pdbId = body.pdbId;
     }
-    const db = await getRequestDatabase();
+    const db = await getProjectDatabase(projectId);
     const result = await submitFoldseekSearch(db, projectId, pdbId);
     return Response.json(result, { status: result.pending ? 202 : 200 });
   } catch (error) {
@@ -54,7 +54,7 @@ export async function PATCH(
     if (body.complete !== true) {
       return jsonError('Send { "complete": true } to finish Foldseek.', 400);
     }
-    const db = await getRequestDatabase();
+    const db = await getProjectDatabase(projectId);
     return Response.json(await completeFoldseekModule(db, projectId));
   } catch (error) {
     if (error instanceof SyntaxError) {

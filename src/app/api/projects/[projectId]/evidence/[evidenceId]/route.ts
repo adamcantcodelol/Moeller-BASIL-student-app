@@ -1,4 +1,4 @@
-import { getRequestDatabase } from "@/lib/db/request";
+import { getProjectDatabase } from "@/lib/db/request";
 import { handleServiceError } from "@/lib/http";
 import { deleteEvidenceRecord } from "@/lib/services/evidenceService";
 
@@ -10,7 +10,7 @@ export async function DELETE(
 ) {
   try {
     const { projectId, evidenceId } = await context.params;
-    const db = await getRequestDatabase();
+    const db = await getProjectDatabase(projectId);
     await deleteEvidenceRecord(db, projectId, evidenceId);
     return Response.json({ ok: true });
   } catch (error) {

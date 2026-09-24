@@ -1,4 +1,4 @@
-import { getRequestDatabase } from "@/lib/db/request";
+import { getProjectDatabase } from "@/lib/db/request";
 import { handleServiceError, jsonError } from "@/lib/http";
 import {
   completeDaliModule,
@@ -14,7 +14,7 @@ export async function GET(
 ) {
   try {
     const { projectId } = await context.params;
-    const db = await getRequestDatabase();
+    const db = await getProjectDatabase(projectId);
     return Response.json(await listDaliResults(db, projectId));
   } catch (error) {
     return handleServiceError(error);
@@ -35,7 +35,7 @@ export async function POST(
       pdbId = body.pdbId;
       chain = body.chain;
     }
-    const db = await getRequestDatabase();
+    const db = await getProjectDatabase(projectId);
     const result = await submitDaliSearch(db, projectId, { pdbId, chain });
     return Response.json(result, { status: result.pending ? 202 : 200 });
   } catch (error) {
@@ -56,7 +56,7 @@ export async function PATCH(
     if (body.complete !== true) {
       return jsonError('Send { "complete": true } to finish Dali.', 400);
     }
-    const db = await getRequestDatabase();
+    const db = await getProjectDatabase(projectId);
     return Response.json(await completeDaliModule(db, projectId));
   } catch (error) {
     if (error instanceof SyntaxError) {

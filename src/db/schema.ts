@@ -18,6 +18,10 @@ export const projects = sqliteTable(
     isDemo: integer("is_demo", { mode: "boolean" }).notNull().default(false),
     createdAt: text("created_at").notNull(),
     updatedAt: text("updated_at").notNull(),
+    ownerType: text("owner_type"),
+    ownerKey: text("owner_key"),
+    classCode: text("class_code"),
+    studentName: text("student_name"),
   },
   (table) => [
     check("projects_status_check", sql`${table.status} IN ('active', 'archived', 'demo')`),
@@ -287,8 +291,16 @@ export const analysisPipelines = sqliteTable(
   ],
 );
 
+export const classes = sqliteTable("classes", {
+  code: text("code").primaryKey(),
+  name: text("name").notNull(),
+  active: integer("active", { mode: "boolean" }).notNull().default(true),
+  createdAt: text("created_at").notNull(),
+});
+
 export const schema = {
   projects,
+  classes,
   structures,
   modules,
   moduleRuns,

@@ -1,4 +1,4 @@
-import { getRequestDatabase } from "@/lib/db/request";
+import { getProjectDatabase } from "@/lib/db/request";
 import { handleServiceError, jsonError } from "@/lib/http";
 import {
   collectUniqueResidues,
@@ -19,7 +19,7 @@ export async function GET(
 ) {
   try {
     const { projectId } = await context.params;
-    const db = await getRequestDatabase();
+    const db = await getProjectDatabase(projectId);
     const items = await listEvidenceForProject(db, projectId);
     const structure = await getStructureByProjectId(db, projectId);
     const residues = collectUniqueResidues(items);
@@ -59,7 +59,7 @@ export async function PATCH(
         400,
       );
     }
-    const db = await getRequestDatabase();
+    const db = await getProjectDatabase(projectId);
     return Response.json(await completeActiveSiteModule(db, projectId));
   } catch (error) {
     if (error instanceof SyntaxError) {

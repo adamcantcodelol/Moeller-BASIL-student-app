@@ -665,3 +665,34 @@ button.primary-cta:not(:disabled):hover {
 .all-modules-details .project-grid {
   margin-top: 0.75rem;
 }
+
+.identity-chip {
+  font-size: 0.9rem;
+  margin-top: 0.25rem;
+}
+
+button.chip-button {
+  padding: 0.1rem 0.5rem;
+  font-size: 0.8rem;
+  margin-left: 0.25rem;
+}
+
+.class-code-big {
+  font-size: 3rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  font-family: ui-monospace, monospace;
+  margin: 0.25rem 0;
+}
+
+.teacher-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.teacher-table th,
+.teacher-table td {
+  text-align: left;
+  padding: 0.3rem 0.5rem;
+  border-bottom: 1px solid rgba(128, 128, 128, 0.3);
+}

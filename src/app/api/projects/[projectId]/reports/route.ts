@@ -1,4 +1,4 @@
-import { getRequestDatabase } from "@/lib/db/request";
+import { getProjectDatabase } from "@/lib/db/request";
 import { handleServiceError } from "@/lib/http";
 import { generateReports, listReports } from "@/lib/services/reportService";
 
@@ -10,7 +10,7 @@ export async function GET(
 ) {
   try {
     const { projectId } = await context.params;
-    const db = await getRequestDatabase();
+    const db = await getProjectDatabase(projectId);
     return Response.json({ reports: await listReports(db, projectId) });
   } catch (error) {
     return handleServiceError(error);
@@ -23,7 +23,7 @@ export async function POST(
 ) {
   try {
     const { projectId } = await context.params;
-    const db = await getRequestDatabase();
+    const db = await getProjectDatabase(projectId);
     return Response.json(await generateReports(db, projectId));
   } catch (error) {
     return handleServiceError(error);

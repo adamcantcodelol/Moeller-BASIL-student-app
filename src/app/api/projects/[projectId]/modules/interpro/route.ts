@@ -1,4 +1,4 @@
-import { getRequestDatabase } from "@/lib/db/request";
+import { getProjectDatabase } from "@/lib/db/request";
 import { handleServiceError, jsonError } from "@/lib/http";
 import {
   completeInterProModule,
@@ -14,7 +14,7 @@ export async function GET(
 ) {
   try {
     const { projectId } = await context.params;
-    const db = await getRequestDatabase();
+    const db = await getProjectDatabase(projectId);
     const payload = await listInterProResults(db, projectId);
     return Response.json(payload);
   } catch (error) {
@@ -35,7 +35,7 @@ export async function POST(
         400,
       );
     }
-    const db = await getRequestDatabase();
+    const db = await getProjectDatabase(projectId);
     const result = await fetchAndSaveInterProAnnotations(
       db,
       projectId,
@@ -60,7 +60,7 @@ export async function PATCH(
     if (body.complete !== true) {
       return jsonError('Send { "complete": true } to finish InterPro.', 400);
     }
-    const db = await getRequestDatabase();
+    const db = await getProjectDatabase(projectId);
     const result = await completeInterProModule(db, projectId);
     return Response.json(result);
   } catch (error) {

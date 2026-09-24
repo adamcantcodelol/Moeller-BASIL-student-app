@@ -1,4 +1,4 @@
-import { getRequestDatabase } from "@/lib/db/request";
+import { getProjectDatabase } from "@/lib/db/request";
 import { handleServiceError, jsonError } from "@/lib/http";
 import { addModuleNote, listNotesForModule } from "@/lib/services/noteService";
 import { noteInputSchema } from "@/lib/validation/project";
@@ -15,7 +15,7 @@ export async function GET(
     if (!moduleId) {
       return jsonError("moduleId query parameter is required.", 400);
     }
-    const db = await getRequestDatabase();
+    const db = await getProjectDatabase(projectId);
     const notes = await listNotesForModule(db, projectId, moduleId);
     return Response.json({ notes });
   } catch (error) {
@@ -36,7 +36,7 @@ export async function POST(
         { status: 400 },
       );
     }
-    const db = await getRequestDatabase();
+    const db = await getProjectDatabase(projectId);
     const note = await addModuleNote(
       db,
       projectId,

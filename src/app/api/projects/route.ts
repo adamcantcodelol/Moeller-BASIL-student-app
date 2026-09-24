@@ -7,13 +7,18 @@ import {
   fetchAndSaveRcsbStructure,
   saveStudentPdbId,
 } from "@/lib/services/structureService";
+import { ensureDeviceIdentity, getRequestIdentity } from "@/lib/auth/request";
+import { ownerForIdentity } from "@/lib/auth/identity";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
     const db = await getRequestDatabase();
-    const projects = await listProjects(db);
+    const projects = await listProjects(
+      db,
+      ownerForIdentity(await getRequestIdentity()),
+    );
     return Response.json({
       projects: projects.map((project) => ({
         ...project,
@@ -36,10 +41,13 @@ export async function POST(request: Request) {
       );
     }
 
+    // No sign-in needed: an anonymous device id is created on first use.
+    const identity = await ensureDeviceIdentity();
     const db = await getRequestDatabase();
     const project = await createProject(db, {
       name: parsed.data.name,
       studentId: parsed.data.studentId ?? null,
+      owner: ownerForIdentity(identity),
     });
 
     if (parsed.data.pdbId) {

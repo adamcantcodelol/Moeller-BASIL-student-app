@@ -4,7 +4,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import { DemoBanner } from "@/components/demo/DemoBanner";
 import { HypothesisForm } from "@/components/hypothesis/HypothesisForm";
 import { ShannonBotChat } from "@/components/shannonbot/ShannonBotChat";
-import { getRequestDatabase } from "@/lib/db/request";
+import { getProjectPageDatabase } from "@/lib/db/request";
 import { getProjectOverview, ServiceError } from "@/lib/services/projectService";
 import { getHypothesisForProject } from "@/lib/services/hypothesisService";
 import { getShannonBotConversation } from "@/lib/services/shannonBotService";
@@ -18,7 +18,7 @@ export default async function HypothesisPage({
   params: Promise<{ projectId: string }>;
 }) {
   const { projectId } = await params;
-  const db = await getRequestDatabase();
+  const db = await getProjectPageDatabase(projectId);
   const overview = await getProjectOverview(db, projectId).catch(
     (error: unknown) => {
       if (error instanceof ServiceError && error.status === 404) {

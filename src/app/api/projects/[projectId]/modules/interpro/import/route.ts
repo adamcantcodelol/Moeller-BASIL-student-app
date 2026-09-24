@@ -1,4 +1,4 @@
-import { getRequestDatabase } from "@/lib/db/request";
+import { getProjectDatabase } from "@/lib/db/request";
 import { handleServiceError, jsonError } from "@/lib/http";
 import { importInterProResults } from "@/lib/services/interproService";
 import { IMPORT_FORMATS, type ImportFormat } from "@/types/importWorkflow";
@@ -33,7 +33,7 @@ export async function POST(
       );
     }
 
-    const db = await getRequestDatabase();
+    const db = await getProjectDatabase(projectId);
     const result = await importInterProResults(db, projectId, {
       format: body.format as ImportFormat,
       content: body.content,

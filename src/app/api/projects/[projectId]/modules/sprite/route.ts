@@ -1,4 +1,4 @@
-import { getRequestDatabase } from "@/lib/db/request";
+import { getProjectDatabase } from "@/lib/db/request";
 import { handleServiceError, jsonError } from "@/lib/http";
 import {
   completeSpriteModule,
@@ -14,7 +14,7 @@ export async function GET(
 ) {
   try {
     const { projectId } = await context.params;
-    const db = await getRequestDatabase();
+    const db = await getProjectDatabase(projectId);
     return Response.json(await listSpriteResults(db, projectId));
   } catch (error) {
     return handleServiceError(error);
@@ -38,7 +38,7 @@ export async function POST(
       pdbId = body.pdbId;
       database = body.database;
     }
-    const db = await getRequestDatabase();
+    const db = await getProjectDatabase(projectId);
     const result = await submitSpriteSearch(db, projectId, { pdbId, database });
     return Response.json(result, { status: result.pending ? 202 : 200 });
   } catch (error) {
@@ -59,7 +59,7 @@ export async function PATCH(
     if (body.complete !== true) {
       return jsonError('Send { "complete": true } to finish SPRITE.', 400);
     }
-    const db = await getRequestDatabase();
+    const db = await getProjectDatabase(projectId);
     return Response.json(await completeSpriteModule(db, projectId));
   } catch (error) {
     if (error instanceof SyntaxError) {

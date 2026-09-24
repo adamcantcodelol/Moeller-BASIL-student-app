@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { AppShell } from "@/components/layout/AppShell";
 import { DemoBanner } from "@/components/demo/DemoBanner";
-import { getRequestDatabase } from "@/lib/db/request";
+import { getProjectPageDatabase } from "@/lib/db/request";
 import { getProjectOverview, ServiceError } from "@/lib/services/projectService";
 import { listNotesForModule } from "@/lib/services/noteService";
 import { listInterProResults } from "@/lib/services/interproService";
@@ -53,7 +53,7 @@ export default async function ModulePage({
     notFound();
   }
 
-  const db = await getRequestDatabase();
+  const db = await getProjectPageDatabase(projectId);
   const overview = await getProjectOverview(db, projectId).catch((error: unknown) => {
     if (error instanceof ServiceError && error.status === 404) {
       notFound();

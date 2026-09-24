@@ -1,4 +1,4 @@
-import { getRequestDatabase } from "@/lib/db/request";
+import { getProjectDatabase } from "@/lib/db/request";
 import { handleServiceError, jsonError } from "@/lib/http";
 import { getModuleRun } from "@/lib/db/queries/moduleRuns";
 import {
@@ -31,7 +31,7 @@ export async function GET(
   try {
     const { projectId, moduleSlug } = await context.params;
     const definition = await assertModuleAccessible(moduleSlug);
-    const db = await getRequestDatabase();
+    const db = await getProjectDatabase(projectId);
     const run = await getModuleRun(db, projectId, definition.id);
     return Response.json({ module: definition, run });
   } catch (error) {
@@ -52,7 +52,7 @@ export async function PATCH(
       return jsonError('Send { "complete": true } to finish this module.', 400);
     }
 
-    const db = await getRequestDatabase();
+    const db = await getProjectDatabase(projectId);
 
     if (definition.id === PDB_SETUP_MODULE_ID) {
       const run = await completePdbSetup(db, projectId);

@@ -1,4 +1,4 @@
-import { getRequestDatabase } from "@/lib/db/request";
+import { getProjectDatabase } from "@/lib/db/request";
 import { handleServiceError, jsonError } from "@/lib/http";
 import {
   completeBlastModule,
@@ -14,7 +14,7 @@ export async function GET(
 ) {
   try {
     const { projectId } = await context.params;
-    const db = await getRequestDatabase();
+    const db = await getProjectDatabase(projectId);
     return Response.json(await listBlastResults(db, projectId));
   } catch (error) {
     return handleServiceError(error);
@@ -38,7 +38,7 @@ export async function POST(
       sequence = body.sequence;
       database = body.database;
     }
-    const db = await getRequestDatabase();
+    const db = await getProjectDatabase(projectId);
     const result = await submitBlastSearch(db, projectId, {
       sequence,
       database,
@@ -62,7 +62,7 @@ export async function PATCH(
     if (body.complete !== true) {
       return jsonError('Send { "complete": true } to finish BLAST.', 400);
     }
-    const db = await getRequestDatabase();
+    const db = await getProjectDatabase(projectId);
     return Response.json(await completeBlastModule(db, projectId));
   } catch (error) {
     if (error instanceof SyntaxError) {

@@ -1,4 +1,4 @@
-import { getRequestDatabase } from "@/lib/db/request";
+import { getProjectDatabase } from "@/lib/db/request";
 import { handleServiceError, jsonError } from "@/lib/http";
 import {
   getPipelineStatus,
@@ -19,7 +19,7 @@ export async function GET(
 ) {
   try {
     const { projectId } = await context.params;
-    const db = await getRequestDatabase();
+    const db = await getProjectDatabase(projectId);
     const pipeline = await getPipelineStatus(db, projectId);
     return Response.json({ pipeline });
   } catch (error) {
@@ -61,7 +61,7 @@ export async function POST(
       }
     }
 
-    const db = await getRequestDatabase();
+    const db = await getProjectDatabase(projectId);
     if (action === "retry-step" && tool) {
       const pipeline = await retryPipelineStep(db, projectId, tool);
       return Response.json({ pipeline });

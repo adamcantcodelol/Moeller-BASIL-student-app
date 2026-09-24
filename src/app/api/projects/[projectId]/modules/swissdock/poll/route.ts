@@ -1,4 +1,4 @@
-import { getRequestDatabase } from "@/lib/db/request";
+import { getProjectDatabase } from "@/lib/db/request";
 import { handleServiceError, jsonError } from "@/lib/http";
 import { pollSwissDockJob } from "@/lib/services/swissdockService";
 
@@ -14,7 +14,7 @@ export async function POST(
     if (!body.jobId || typeof body.jobId !== "string") {
       return jsonError('Send { "jobId": "..." } to poll SwissDock.', 400);
     }
-    const db = await getRequestDatabase();
+    const db = await getProjectDatabase(projectId);
     const result = await pollSwissDockJob(db, projectId, body.jobId);
     return Response.json(result, { status: result.pending ? 202 : 200 });
   } catch (error) {

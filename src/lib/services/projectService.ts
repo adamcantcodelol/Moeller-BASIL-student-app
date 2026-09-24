@@ -6,6 +6,7 @@ import { getProjectById, listProjects } from "@/lib/db/queries/projects";
 import { listModuleRunsForProject } from "@/lib/db/queries/moduleRuns";
 import { getStructureByProjectId } from "@/lib/db/queries/structures";
 import type { Project } from "@/types/project";
+import type { Owner } from "@/lib/auth/identity";
 import type { ModuleRun } from "@/types/moduleRun";
 import type { PdbStructure } from "@/types/structure";
 
@@ -22,6 +23,8 @@ export class ServiceError extends Error {
 export interface CreateProjectInput {
   name: string;
   studentId?: string | null;
+  /** Device or class identity; null only for legacy/demo/test projects. */
+  owner?: Owner | null;
 }
 
 export interface ProjectOverview {
@@ -43,6 +46,10 @@ export async function createProject(
     studentId: input.studentId?.trim() ? input.studentId.trim() : null,
     status: "active",
     isDemo: false,
+    ownerType: input.owner?.ownerType ?? null,
+    ownerKey: input.owner?.ownerKey ?? null,
+    classCode: input.owner?.classCode ?? null,
+    studentName: input.owner?.studentName ?? null,
     createdAt: timestamp,
     updatedAt: timestamp,
   });
