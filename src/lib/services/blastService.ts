@@ -250,6 +250,8 @@ export async function pollBlastJob(
   normalized: BlastNormalizedSearch | null;
   /** True when Worker skipped NCBI due to ≥60s spacing. */
   deferredNcbiPoll?: boolean;
+  /** Ms until the next NCBI poll is allowed (when deferred). */
+  ncbiWaitRemainingMs?: number;
 }> {
   const project = await getProjectById(db, projectId);
   if (!project) {
@@ -306,6 +308,7 @@ export async function pollBlastJob(
         rtoe,
         normalized: null,
         deferredNcbiPoll: true,
+        ncbiWaitRemainingMs: BLAST_NCBI_MIN_POLL_INTERVAL_MS - elapsed,
       };
     }
   }

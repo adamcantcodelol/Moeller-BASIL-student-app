@@ -190,7 +190,7 @@ describe("pipelineService tick flow", () => {
     return { db, project };
   }
 
-  it("starts pipeline and advances sprite → blast (pending) then continues after poll", async () => {
+  it("starts pipeline and advances sprite → blast (pending) then overlaps later tools", async () => {
     const { db, project } = await seedRcsbProject();
     const started = await startPipeline(db, project.id);
     expect(started.status).toBe("running");
@@ -204,10 +204,36 @@ describe("pipelineService tick flow", () => {
     expect(tick2.pipeline.steps[1]?.tool).toBe("blast");
     expect(tick2.pipeline.steps[1]?.status).toBe("running");
     expect(tick2.waiting).toBe(true);
+    expect(tick2.suggestedWaitMs).toBeGreaterThanOrEqual(55_000);
 
+    // Poll finishes BLAST and starts Foldseek in the same tick (overlap).
     const tick3 = await tickPipeline(db, project.id);
     expect(tick3.pipeline.steps[1]?.status).toBe("succeeded");
-    expect(tick3.waiting).toBe(false);
+    expect(tick3.pipeline.steps[2]?.status).toBe("succeeded");
+  });
+
+  it("keeps later tools moving while BLAST stays pending", async () => {
+    const blast = await import("@/lib/services/blastService");
+    vi.mocked(blast.pollBlastJob).mockResolvedValueOnce({
+      job: { id: "blast-job", status: "running" } as never,
+      pending: true,
+      rid: "RID1",
+      rtoe: 120,
+      normalized: null,
+      deferredNcbiPoll: true,
+      ncbiWaitRemainingMs: 45_000,
+    });
+
+    const { db, project } = await seedRcsbProject();
+    await startPipeline(db, project.id);
+    await tickPipeline(db, project.id); // sprite
+    await tickPipeline(db, project.id); // blast submit
+
+    const overlapped = await tickPipeline(db, project.id);
+    expect(overlapped.pipeline.steps[1]?.status).toBe("running");
+    expect(overlapped.pipeline.steps[2]?.status).toBe("succeeded");
+    expect(overlapped.waiting).toBe(true);
+    expect(overlapped.suggestedWaitMs).toBeGreaterThanOrEqual(45_000);
   });
 
   it("skips CLEAN always and SwissDock when ligand missing; InterPro runs when UniProt present", async () => {

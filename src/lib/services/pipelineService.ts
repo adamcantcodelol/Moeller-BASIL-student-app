@@ -192,6 +192,8 @@ type TickActionResult = {
   steps: PipelineStep[];
   /** True when current tool is still pending remote work. */
   waiting: boolean;
+  /** Hint for the client tick loop (BLAST NCBI spacing, etc.). */
+  suggestedWaitMs?: number;
 };
 
 async function submitOrSkipStep(
@@ -282,11 +284,14 @@ async function submitOrSkipStep(
         ? "SPRITE submitted — waiting for matches"
         : `SPRITE complete (${result.normalized?.hitCount ?? 0} hits)`;
     } else if (step.tool === "blast") {
-      const result = await submitBlastSearch(db, projectId);
+      // pdbaa is much faster than swissprot for classroom auto-run.
+      const result = await submitBlastSearch(db, projectId, {
+        database: "pdbaa",
+      });
       jobId = result.job.id;
       pending = result.pending;
       summary = pending
-        ? `BLAST submitted (RID ${result.rid ?? "—"})`
+        ? `BLAST submitted on pdbaa (RID ${result.rid ?? "—"}) — later tools continue while NCBI runs`
         : `BLAST complete (${result.normalized?.hitCount ?? 0} hits)`;
     } else if (step.tool === "foldseek") {
       const result = await submitFoldseekSearch(db, projectId);
@@ -401,6 +406,7 @@ async function pollRunningStep(
   try {
     let pending = false;
     let summary = step.summary;
+    let suggestedWaitMs = 4_000;
 
     if (step.tool === "sprite") {
       const result = await pollSpriteJob(db, projectId, step.jobId);
@@ -414,7 +420,18 @@ async function pollRunningStep(
       if (!pending) {
         summary = `BLAST complete (${result.normalized?.hitCount ?? 0} hits)`;
       } else if (result.deferredNcbiPoll) {
-        summary = "BLAST waiting for NCBI ≥60s poll spacing";
+        const waitMs = Math.max(1_000, result.ncbiWaitRemainingMs ?? 60_000);
+        suggestedWaitMs = Math.max(suggestedWaitMs, waitMs);
+        const secs = Math.max(1, Math.ceil(waitMs / 1000));
+        summary = `BLAST waiting on NCBI (next check ~${secs}s). Foldseek and later tools keep going.`;
+      } else {
+        // Real NCBI poll happened; respect ≥60s before the next upstream check.
+        suggestedWaitMs = Math.max(suggestedWaitMs, 55_000);
+        const rtoeHint =
+          typeof result.rtoe === "number" && result.rtoe > 0
+            ? ` NCBI estimate ~${Math.max(1, Math.round(result.rtoe / 60))} min.`
+            : "";
+        summary = `BLAST still running at NCBI.${rtoeHint}`;
       }
     } else if (step.tool === "foldseek") {
       const result = await pollFoldseekJob(db, projectId, step.jobId);
@@ -449,6 +466,7 @@ async function pollRunningStep(
     if (pending) {
       return {
         waiting: true,
+        suggestedWaitMs,
         steps: patchStep(steps, index, {
           status: "running",
           summary,
@@ -458,6 +476,7 @@ async function pollRunningStep(
 
     return {
       waiting: false,
+      suggestedWaitMs: 4_000,
       steps: patchStep(steps, index, {
         status: "succeeded",
         finishedAt: nowIso(),
@@ -511,6 +530,7 @@ export async function tickPipeline(
   pipeline: AnalysisPipeline;
   waiting: boolean;
   advanced: boolean;
+  suggestedWaitMs: number;
 }> {
   const project = await getProjectById(db, projectId);
   if (!project) {
@@ -525,70 +545,81 @@ export async function tickPipeline(
     );
   }
   if (pipeline.status === "completed" || pipeline.status === "failed") {
-    return { pipeline, waiting: false, advanced: false };
+    return {
+      pipeline,
+      waiting: false,
+      advanced: false,
+      suggestedWaitMs: 4_000,
+    };
   }
   if (pipeline.status === "idle") {
     throw new ServiceError("Pipeline is idle. Start full analysis first.", 400);
   }
 
-  const index = findActiveStepIndex(pipeline.steps);
-  if (index >= pipeline.steps.length) {
-    const outcome = summarizePipelineOutcome(pipeline.steps);
-    pipeline = await persistPipeline(db, {
-      ...pipeline,
-      status: outcome.status,
-      currentStepIndex: pipeline.steps.length,
-      finishedAt: nowIso(),
-    });
-    return { pipeline, waiting: false, advanced: true };
-  }
+  let steps = pipeline.steps;
+  let suggestedWaitMs = 4_000;
+  let advanced = false;
 
-  const step = pipeline.steps[index]!;
-  let result: TickActionResult;
-
-  if (step.status === "pending") {
-    result = await submitOrSkipStep(
-      db,
-      projectId,
-      step,
-      index,
-      pipeline.steps,
-    );
-  } else if (step.status === "running") {
-    result = await pollRunningStep(db, projectId, step, index, pipeline.steps);
-  } else {
-    // Should not happen — terminal steps are skipped by findActiveStepIndex.
-    return { pipeline, waiting: false, advanced: false };
-  }
-
-  let nextIndex = index;
-  if (!result.waiting) {
-    const finished = result.steps[index]!;
-    if (isTerminalStepStatus(finished.status)) {
-      nextIndex = index + 1;
+  // Poll every running job first (BLAST can sit for minutes without blocking others).
+  for (let i = 0; i < steps.length; i += 1) {
+    const step = steps[i]!;
+    if (step.status !== "running") continue;
+    const result = await pollRunningStep(db, projectId, step, i, steps);
+    steps = result.steps;
+    if (typeof result.suggestedWaitMs === "number") {
+      suggestedWaitMs = Math.max(suggestedWaitMs, result.suggestedWaitMs);
+    }
+    if (!result.waiting && isTerminalStepStatus(steps[i]!.status)) {
+      advanced = true;
     }
   }
 
+  // Start at most one new pending tool per tick, even while earlier tools still run.
+  const pendingIndex = steps.findIndex((step) => step.status === "pending");
+  if (pendingIndex >= 0) {
+    const result = await submitOrSkipStep(
+      db,
+      projectId,
+      steps[pendingIndex]!,
+      pendingIndex,
+      steps,
+    );
+    steps = result.steps;
+    advanced = true;
+    if (result.waiting && steps[pendingIndex]!.tool === "blast") {
+      // After Put + first SearchInfo, NCBI asks for ≥60s before the next poll.
+      suggestedWaitMs = Math.max(suggestedWaitMs, 55_000);
+    }
+  }
+
+  const stillWaiting = steps.some((step) => step.status === "running");
+  const allTerminal = steps.every((step) => isTerminalStepStatus(step.status));
+
   let status: PipelineStatus = "running";
-  let finishedAt: string | null = null;
-  if (nextIndex >= result.steps.length && !result.waiting) {
-    const outcome = summarizePipelineOutcome(result.steps);
+  let finishedAt: string | null = pipeline.finishedAt;
+  if (allTerminal) {
+    const outcome = summarizePipelineOutcome(steps);
     status = outcome.status;
     finishedAt = nowIso();
   }
 
+  const currentStepIndex = allTerminal
+    ? steps.length
+    : findActiveStepIndex(steps);
+
   pipeline = await persistPipeline(db, {
     ...pipeline,
-    steps: result.steps,
-    currentStepIndex: Math.min(nextIndex, result.steps.length),
+    steps,
+    currentStepIndex,
     status,
-    finishedAt: finishedAt ?? pipeline.finishedAt,
+    finishedAt,
   });
 
   return {
     pipeline,
-    waiting: result.waiting,
-    advanced: !result.waiting,
+    waiting: stillWaiting && !allTerminal,
+    advanced,
+    suggestedWaitMs: stillWaiting ? suggestedWaitMs : 4_000,
   };
 }
 

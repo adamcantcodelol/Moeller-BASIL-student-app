@@ -4,8 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { AnalysisPipeline } from "@/types/pipeline";
 
-const MAX_TICKS = 180;
-const TICK_MS = 4000;
+const MAX_TICKS = 400;
+const DEFAULT_TICK_MS = 4_000;
 
 export function StartAnalysisButton({
   projectId,
@@ -34,7 +34,7 @@ export function StartAnalysisButton({
       for (let attempt = 0; attempt < MAX_TICKS; attempt += 1) {
         if (stopRef.current) break;
         setStatus(
-          `Advancing analysis (tick ${attempt + 1}/${MAX_TICKS})… Worker runs one tool step per tick.`,
+          `Advancing analysis (tick ${attempt + 1}/${MAX_TICKS})… BLAST can take several minutes at NCBI; other tools keep going.`,
         );
         const response = await fetch(`/api/projects/${projectId}/pipeline`, {
           method: "POST",
@@ -45,6 +45,7 @@ export function StartAnalysisButton({
           error?: string;
           pipeline?: AnalysisPipeline;
           waiting?: boolean;
+          suggestedWaitMs?: number;
         };
         if (!response.ok && response.status !== 202) {
           setError(payload.error ?? "Pipeline tick failed.");
@@ -52,6 +53,16 @@ export function StartAnalysisButton({
         }
         if (payload.pipeline) {
           setPipeline(payload.pipeline);
+          const active = payload.pipeline.steps.find(
+            (step) =>
+              step.status === "running" ||
+              (step.status === "pending" &&
+                payload.pipeline!.steps.indexOf(step) ===
+                  payload.pipeline!.currentStepIndex),
+          );
+          if (active?.summary) {
+            setStatus(active.summary);
+          }
           if (
             payload.pipeline.status === "completed" ||
             payload.pipeline.status === "failed"
@@ -65,7 +76,11 @@ export function StartAnalysisButton({
             break;
           }
         }
-        await new Promise((resolve) => setTimeout(resolve, TICK_MS));
+        const waitMs = Math.min(
+          90_000,
+          Math.max(2_000, payload.suggestedWaitMs ?? DEFAULT_TICK_MS),
+        );
+        await new Promise((resolve) => setTimeout(resolve, waitMs));
       }
     } finally {
       ticking.current = false;
@@ -119,7 +134,8 @@ export function StartAnalysisButton({
         After your PDB loads from RCSB, run the full live search sequence
         (SPRITE → BLAST → Foldseek → Dali → InterPro when UniProt is mapped →
         SwissDock when a ligand is present). CLEAN stays import-only and is
-        skipped honestly. Results are never invented.
+        skipped honestly. BLAST uses the faster PDB protein database (pdbaa)
+        and does not block later tools. Results are never invented.
       </p>
       {!rcsbReady ? (
         <p className="muted">
@@ -138,7 +154,7 @@ export function StartAnalysisButton({
               ? "Re-run full analysis"
               : "Start full analysis"}
         </button>
-        {done ? (
+        {done || pipeline?.status === "running" ? (
           <a className="button-link" href={`/projects/${projectId}/results`}>
             View Results
           </a>
