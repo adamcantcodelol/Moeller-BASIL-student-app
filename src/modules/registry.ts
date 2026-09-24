@@ -61,7 +61,7 @@ export const CURRICULUM_MODULES: readonly BasilModuleDefinition[] = [
     description: "Perform the CLEAN analysis defined by BASIL.",
     purpose: "Collect CLEAN results with provenance.",
     instructions:
-      "Live CLEAN automation is unavailable after probing the Illinois / MMLi backends (jobmgr/fastapi returned 404; TLS self-signed; web UI uses hCaptcha). Import legitimate CLEAN output. Results are never invented.",
+      "Run live CLEAN on your RCSB sequence (Worker-proxied to the public UIUC MoleculeMaker CLEAN API) to get predicted EC numbers with confidence scores. If the server can't return results, the app says so; import a legitimate CLEAN CSV instead. Results are never invented.",
     order: 4,
     implemented: true,
   },

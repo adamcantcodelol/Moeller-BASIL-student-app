@@ -10,6 +10,8 @@ import { listSpriteResults } from "@/lib/services/spriteService";
 import { listBlastResults } from "@/lib/services/blastService";
 import { listDaliResults } from "@/lib/services/daliService";
 import { listSwissDockResults } from "@/lib/services/swissdockService";
+import { listCleanResults } from "@/lib/services/cleanService";
+import { CleanModule } from "@/modules/clean/CleanModule";
 import { listModuleJobs } from "@/lib/services/importToolService";
 import {
   collectUniqueResidues,
@@ -140,6 +142,23 @@ export default async function ModulePage({
         jobs={dali.jobs}
         pdbId={overview.structure?.pdbId ?? null}
         defaultChain={overview.structure?.chains?.[0] ?? "A"}
+      />
+    );
+  } else if (definition.id === "clean") {
+    const clean = await listCleanResults(db, projectId);
+    const hasSequence = Boolean(
+      overview.structure?.sequence &&
+        overview.structure.sequence.replace(/[^A-Za-z]/g, "").length >= 10,
+    );
+    body = (
+      <CleanModule
+        projectId={projectId}
+        module={definition}
+        run={run}
+        notes={notes}
+        normalized={clean.latestNormalized}
+        jobs={clean.jobs}
+        hasSequence={hasSequence}
       />
     );
   } else if (definition.id === "swissdock") {

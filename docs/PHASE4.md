@@ -14,7 +14,7 @@
 | Tool | Why not live in Workers |
 | --- | --- |
 | **BLAST** | NCBI async RID poll ≥60s |
-| **CLEAN** | No verified Worker-ready free automation claimed |
+| **CLEAN** | Live Worker adapter (UIUC MoleculeMaker API, health-checked; "unavailable" + Retry when its result storage is down) — see SCIENTIFIC_MODULES.md |
 | **Dali** | Web-form oriented; no adopted free REST submit API |
 | **SwissDock** | Free multi-step API but long-running (minutes) |
 

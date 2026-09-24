@@ -8,6 +8,9 @@ import { DaliResults } from "@/components/dali/DaliResults";
 import { InterProResults } from "@/components/interpro/InterProResults";
 import { SwissDockResults } from "@/components/swissdock/SwissDockResults";
 import { LabExplainer } from "@/components/module/LabExplainer";
+import { CleanResults } from "@/components/clean/CleanResults";
+import { RetryStepButton } from "@/components/pipeline/RetryStepButton";
+import type { CleanNormalizedResult } from "@/adapters/clean";
 import type { BlastNormalizedSearch } from "@/adapters/blast";
 import type { FoldseekNormalizedSearch } from "@/adapters/foldseek";
 import type { DaliNormalizedSearch } from "@/adapters/dali";
@@ -63,6 +66,14 @@ function ToolDeepBody({ section }: { section: ToolResultSection }) {
     return (
       <InterProResults
         normalized={section.normalized as InterProNormalizedAnnotation}
+        jobs={[]}
+      />
+    );
+  }
+  if (section.tool === "clean") {
+    return (
+      <CleanResults
+        normalized={section.normalized as CleanNormalizedResult}
         jobs={[]}
       />
     );
@@ -144,6 +155,16 @@ export function ResultsSections({
             <p className="muted">Skip reason: {section.skipReason}</p>
           ) : null}
           {section.error ? <p className="error">{section.error}</p> : null}
+          {section.status === "unavailable" && section.tool !== "rcsb" ? (
+            <p>
+              <RetryStepButton projectId={projectId} tool={section.tool} />{" "}
+              <Link
+                href={`/projects/${projectId}/modules/${section.moduleSlug}`}
+              >
+                or import a CSV
+              </Link>
+            </p>
+          ) : null}
           <ToolDeepBody section={section} />
         </section>
       ))}

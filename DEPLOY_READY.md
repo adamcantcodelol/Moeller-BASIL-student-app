@@ -19,7 +19,7 @@ D1 id is already in `wrangler.jsonc` (`51dc8a93-7078-4d0a-855a-66d076c3034f`).
 2. PDB Setup → retrieve **4HHB** (needs sequence + chains)
 3. Live: InterPro / Foldseek / SPRITE / **BLAST** (Run BLAST → real RID + hits + provenance `https://blast.ncbi.nlm.nih.gov`)
 4. Live Dali / SwissDock when enabled (SwissDock needs student SMILES + box)
-5. CLEAN: import fallback if live unavailable after probe
+5. CLEAN: live via UIUC MoleculeMaker (health-checked); "unavailable" + Retry and CSV import fallback when its result storage is down
 6. Evidence, hypothesis, ShannonBot, reports
 7. Load demo → **DEMO DATA** banner
 

@@ -12,7 +12,7 @@
 
 ## Import-only after probe
 
-- **CLEAN** — Illinois SPA references MMLi jobmgr/fastapi, but those hosts returned 404 with self-signed TLS from our probe environment; UI uses hCaptcha. Kept import-only honestly.
+- **CLEAN** — Live via the public UIUC MoleculeMaker API (`https://mmli.fastapi.mmli2.ncsa.illinois.edu`, found in the SPA's runtime `/assets/config/envvars.json`; the 2026-09-23 probe hit stale fallback hosts). No auth/captcha (`enableHCAPTCHA=false`). Flow: `POST /clean/jobs` `{email:"", job_info: JSON.stringify({input_fasta:[{header, sequence}]})}` → poll `GET /clean/jobs/{id}` (`queued|processing|completed|error|canceled`) → `GET /clean/results/{id}` → `[{sequence, result:[{ecNumber:"EC:x.x.x.x", score}]}]`. Score is CLEAN confidence (High ≥0.8, Medium 0.2–0.8, Low <0.2). Limits: ≤1022 aa, ≤20 sequences. 2026-09-24: a real P00918 job completed in ~77 s but `/clean/results` returned HTTP 500 (MMLI MinIO down: `minioapi.mmli.fastapi.mmli2…` → 503 "no available server"). The pipeline health-checks results first and marks CLEAN "unavailable" (Retry + CSV import) instead of inventing EC numbers.
 
 ## Import remains optional fallback
 

@@ -55,7 +55,7 @@ export default async function AnalysisProgressPage({
       {pipeline ? (
         <section className="card">
           <h2>Step detail</h2>
-          <PipelineStepList pipeline={pipeline} />
+          <PipelineStepList pipeline={pipeline} projectId={projectId} />
         </section>
       ) : null}
     </AppShell>

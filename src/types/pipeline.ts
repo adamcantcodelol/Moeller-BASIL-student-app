@@ -16,6 +16,8 @@ export const PIPELINE_STEP_STATUSES = [
   "succeeded",
   "failed",
   "skipped",
+  /** Upstream service is up but cannot deliver results right now (Retry). */
+  "unavailable",
 ] as const;
 
 export type PipelineStepStatus = (typeof PIPELINE_STEP_STATUSES)[number];
@@ -39,6 +41,10 @@ export interface PipelineStep {
   summary: string | null;
   startedAt: string | null;
   finishedAt: string | null;
+  /** Earliest time the next upstream poll is due (CLEAN poll spacing). */
+  nextPollAt?: string | null;
+  /** Technical reason behind an "unavailable" status (teacher-facing). */
+  unavailableDetail?: string | null;
 }
 
 export interface AnalysisPipeline {

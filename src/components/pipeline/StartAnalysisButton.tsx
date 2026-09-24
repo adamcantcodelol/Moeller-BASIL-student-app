@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { AnalysisPipeline } from "@/types/pipeline";
 import { LabExplainer } from "@/components/module/LabExplainer";
+import { RetryStepButton } from "@/components/pipeline/RetryStepButton";
 
 const MAX_TICKS = 400;
 const DEFAULT_TICK_MS = 4_000;
@@ -134,8 +135,8 @@ export function StartAnalysisButton({
       <LabExplainer labKey="analysis" />
       <p className="classroom-cta-lead">
         One click runs live tools on this site (SPRITE, BLAST, Foldseek, Dali,
-        and more when data allows). CLEAN is import-only and skipped honestly.
-        Results are never invented.
+        CLEAN, and more when data allows). If an outside server is down, that
+        step says so and offers Retry. Results are never invented.
       </p>
       {!rcsbReady ? (
         <p className="muted">
@@ -176,15 +177,22 @@ export function StartAnalysisButton({
       </div>
       {status ? <p className="action-success">{status}</p> : null}
       {error ? <p className="error">{error}</p> : null}
-      {pipeline ? <PipelineStepList pipeline={pipeline} /> : null}
+      {pipeline ? (
+        <PipelineStepList pipeline={pipeline} projectId={projectId} />
+      ) : null}
     </div>
   );
 }
 
+/** Steps whose failures are usually upstream outages worth retrying. */
+const RETRYABLE_TOOLS = new Set(["clean"]);
+
 export function PipelineStepList({
   pipeline,
+  projectId,
 }: {
   pipeline: AnalysisPipeline;
+  projectId?: string;
 }) {
   return (
     <ol className="pipeline-steps">
@@ -204,6 +212,17 @@ export function PipelineStepList({
               <div className="muted">Skip: {step.skipReason}</div>
             ) : null}
             {step.error ? <div className="error">{step.error}</div> : null}
+            {projectId &&
+            RETRYABLE_TOOLS.has(step.tool) &&
+            (step.status === "unavailable" || step.status === "failed") &&
+            pipeline.status !== "running" ? (
+              <div>
+                <RetryStepButton projectId={projectId} tool={step.tool} />{" "}
+                <a href={`/projects/${projectId}/modules/${step.tool}`}>
+                  or import a CSV
+                </a>
+              </div>
+            ) : null}
           </li>
         );
       })}

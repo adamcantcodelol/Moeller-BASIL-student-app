@@ -26,11 +26,11 @@ export const IMPORT_MODULE_CONFIG: Record<string, ImportModuleConfig> = {
   },
   clean: {
     toolName: "CLEAN",
-    acceptedFormats: ["text", "json", "tsv"],
+    acceptedFormats: ["csv", "text", "json", "tsv"],
     instructions:
-      "Live CLEAN is unavailable after probing clean.platform.ibiofoundry.illinois.edu (MMLi jobmgr/fastapi returned 404; self-signed TLS; UI uses hCaptcha). Import a legitimate CLEAN export. Do not invent EC numbers.",
+      "Prefer the live Run CLEAN button (Worker proxies the UIUC MoleculeMaker CLEAN API). Use this import only if live CLEAN is unavailable: paste a legitimate CLEAN maxsep CSV. Do not invent EC numbers.",
     verificationNote:
-      "Probed 2026-09-23: Illinois CLEAN SPA references jobmgr.mmli1.ncsa.illinois.edu and mmli.fastapi.mmli1.ncsa.illinois.edu, but those hosts returned 404 with self-signed certificates from this environment, and the web UI loads hCaptcha. Kept import-only honestly — no fabricated EC predictions.",
+      "Verified 2026-09-24: the CLEAN SPA loads its backend from /assets/config/envvars.json → https://mmli.fastapi.mmli2.ncsa.illinois.edu (valid TLS, enableHCAPTCHA=false, no auth). POST /clean/jobs → GET /clean/jobs/{id} (phase) → GET /clean/results/{id}. A real P00918 job completed in ~77s, but /clean/results returned HTTP 500 (MMLI MinIO store down). The app health-checks results first and marks CLEAN unavailable instead of inventing EC numbers. Import remains the fallback.",
   },
   dali: {
     toolName: "Dali",

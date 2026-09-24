@@ -73,8 +73,8 @@ const IMPORT_WORKFLOWS: Record<string, ImportWorkflowDefinition> = {
   ),
   clean: defineImportWorkflow(
     "clean",
-    ["text", "json", "tsv"],
-    "Live CLEAN is unavailable after honest API probing (MMLi backends 404 / hCaptcha). Import a legitimate CLEAN export. EC numbers are never invented.",
+    ["csv", "text", "json", "tsv"],
+    "Optional fallback: if live Worker-proxied CLEAN (UIUC MoleculeMaker) is unavailable, import a legitimate CLEAN maxsep CSV (e.g. `MyProtein,EC:4.2.1.1/0.9866`). EC numbers are never invented.",
   ),
   dali: defineImportWorkflow(
     "dali",

@@ -44,6 +44,17 @@ import {
   submitSwissDock,
   listSwissDockResults,
 } from "@/lib/services/swissdockService";
+import {
+  isCleanUnavailableError,
+  listCleanResults,
+  pollCleanJob,
+  submitCleanPrediction,
+} from "@/lib/services/cleanService";
+import {
+  CLEAN_UNAVAILABLE_MESSAGE,
+  clearCleanResultsHealthCache,
+  type CleanNormalizedResult,
+} from "@/adapters/clean";
 import type {
   AnalysisPipeline,
   PipelineStep,
@@ -196,6 +207,25 @@ type TickActionResult = {
   suggestedWaitMs?: number;
 };
 
+/** First CLEAN status check ~20s after submit (observed runtime ~77s). */
+const CLEAN_FIRST_POLL_DELAY_MS = 20_000;
+
+function cleanUnavailablePatch(
+  timestamp: string,
+  detail: string,
+): Partial<PipelineStep> {
+  return {
+    status: "unavailable",
+    finishedAt: timestamp,
+    summary: CLEAN_UNAVAILABLE_MESSAGE,
+    error: null,
+    skipReason: null,
+    nextPollAt: null,
+    // Technical reason kept for teachers without alarming students.
+    unavailableDetail: detail,
+  };
+}
+
 async function submitOrSkipStep(
   db: AppDatabase,
   projectId: string,
@@ -204,19 +234,6 @@ async function submitOrSkipStep(
   steps: PipelineStep[],
 ): Promise<TickActionResult> {
   const timestamp = nowIso();
-
-  if (step.tool === "clean") {
-    return {
-      waiting: false,
-      steps: patchStep(steps, index, {
-        status: "skipped",
-        skipReason:
-          "CLEAN is import-only after probing live Illinois / MMLi backends (no Worker adapter). Use the CLEAN module to import legitimate output.",
-        finishedAt: timestamp,
-        summary: "Skipped — import-only",
-      }),
-    };
-  }
 
   if (step.tool === "interpro") {
     const structure = await getStructureByProjectId(db, projectId);
@@ -307,6 +324,13 @@ async function submitOrSkipStep(
       summary = pending
         ? "Dali submitted — waiting for job page"
         : `Dali complete (${result.normalized?.hitCount ?? 0} hits)`;
+    } else if (step.tool === "clean") {
+      const result = await submitCleanPrediction(db, projectId);
+      jobId = result.job.id;
+      pending = result.pending;
+      summary = pending
+        ? "CLEAN submitted to UIUC MoleculeMaker — predicting EC numbers (~1–2 min)"
+        : `CLEAN complete (${result.normalized?.predictionCount ?? 0} EC predictions)`;
     } else if (step.tool === "swissdock") {
       const result = await submitSwissDock(db, projectId);
       jobId = result.job.id;
@@ -335,6 +359,10 @@ async function submitOrSkipStep(
           summary,
           error: null,
           skipReason: null,
+          nextPollAt:
+            step.tool === "clean"
+              ? new Date(Date.now() + CLEAN_FIRST_POLL_DELAY_MS).toISOString()
+              : null,
         }),
       };
     }
@@ -356,6 +384,13 @@ async function submitOrSkipStep(
       error instanceof ServiceError || error instanceof Error
         ? error.message
         : "Tool failed without fabricating results.";
+
+    if (step.tool === "clean" && isCleanUnavailableError(error)) {
+      return {
+        waiting: false,
+        steps: patchStep(steps, index, cleanUnavailablePatch(timestamp, error.detail)),
+      };
+    }
 
     if (step.tool === "swissdock" && isLigandMissingError(message)) {
       return {
@@ -445,6 +480,32 @@ async function pollRunningStep(
       if (!pending) {
         summary = `Dali complete (${result.normalized?.hitCount ?? 0} hits)`;
       }
+    } else if (step.tool === "clean") {
+      // Respect CLEAN poll spacing without slowing the whole tick loop.
+      if (step.nextPollAt && Date.parse(step.nextPollAt) > Date.now()) {
+        return { waiting: true, steps };
+      }
+      const result = await pollCleanJob(db, projectId, step.jobId);
+      pending = result.pending;
+      if (!pending) {
+        const top = result.normalized?.topPrediction;
+        summary = top
+          ? `CLEAN complete — top EC ${top.ecNumber} (${top.level}, ${top.score.toFixed(2)})`
+          : "CLEAN complete — no EC prediction returned";
+      } else {
+        summary =
+          result.phase === "completed"
+            ? "CLEAN finished — retrying results download (server storage slow)…"
+            : `CLEAN ${result.phase ?? "running"} at UIUC MoleculeMaker…`;
+        return {
+          waiting: true,
+          steps: patchStep(steps, index, {
+            status: "running",
+            summary,
+            nextPollAt: new Date(Date.now() + result.nextCheckMs).toISOString(),
+          }),
+        };
+      }
     } else if (step.tool === "swissdock") {
       const result = await pollSwissDockJob(db, projectId, step.jobId);
       pending = result.pending;
@@ -489,6 +550,13 @@ async function pollRunningStep(
       error instanceof ServiceError || error instanceof Error
         ? error.message
         : "Poll failed without fabricating results.";
+
+    if (step.tool === "clean" && isCleanUnavailableError(error)) {
+      return {
+        waiting: false,
+        steps: patchStep(steps, index, cleanUnavailablePatch(nowIso(), error.detail)),
+      };
+    }
 
     if (step.tool === "swissdock" && isLigandMissingError(message)) {
       return {
@@ -623,11 +691,73 @@ export async function tickPipeline(
   };
 }
 
+/**
+ * Re-queue one unavailable/failed step (e.g. CLEAN after MoleculeMaker's
+ * result storage recovers) and resume the pipeline. Other steps keep their
+ * real results.
+ */
+export async function retryPipelineStep(
+  db: AppDatabase,
+  projectId: string,
+  tool: PipelineTool,
+): Promise<AnalysisPipeline> {
+  const project = await getProjectById(db, projectId);
+  if (!project) {
+    throw new ServiceError("Project not found.", 404);
+  }
+  const pipeline = await loadPipelineRow(db, projectId);
+  if (!pipeline) {
+    throw new ServiceError(
+      "No analysis pipeline yet. Start full analysis first.",
+      400,
+    );
+  }
+  const index = pipeline.steps.findIndex((step) => step.tool === tool);
+  const step = pipeline.steps[index];
+  if (!step) {
+    throw new ServiceError(`Pipeline has no ${tool} step.`, 400);
+  }
+  if (step.status !== "unavailable" && step.status !== "failed") {
+    throw new ServiceError(
+      `${step.label} is ${step.status}; only unavailable or failed steps can be retried.`,
+      400,
+    );
+  }
+  if (tool === "clean") {
+    // Student asked for a fresh upstream check rather than the cached verdict.
+    clearCleanResultsHealthCache();
+  }
+  const steps = patchStep(pipeline.steps, index, {
+    status: "pending",
+    jobId: null,
+    error: null,
+    skipReason: null,
+    summary: "Retry requested",
+    startedAt: null,
+    finishedAt: null,
+    nextPollAt: null,
+    unavailableDetail: null,
+  });
+  return persistPipeline(db, {
+    ...pipeline,
+    steps,
+    status: "running",
+    currentStepIndex: findActiveStepIndex(steps),
+    finishedAt: null,
+  });
+}
+
 export interface ToolResultSection {
   tool: PipelineTool | "rcsb";
   label: string;
   moduleSlug: string;
-  status: "empty" | "succeeded" | "failed" | "skipped" | "running";
+  status:
+    | "empty"
+    | "succeeded"
+    | "failed"
+    | "skipped"
+    | "running"
+    | "unavailable";
   summary: string;
   provenanceSource: string | null;
   provenanceRetrievedAt: string | null;
@@ -738,6 +868,21 @@ export async function getProjectResultsSections(
         });
         return;
       }
+      if (pipeStep?.status === "unavailable") {
+        sections.push({
+          tool,
+          label: pipeStep.label,
+          moduleSlug: tool,
+          status: "unavailable",
+          summary: pipeStep.summary ?? "Temporarily unavailable.",
+          provenanceSource: null,
+          provenanceRetrievedAt: null,
+          normalized: null,
+          error: null,
+          skipReason: null,
+        });
+        return;
+      }
       if (pipeStep?.status === "skipped") {
         sections.push({
           tool,
@@ -833,26 +978,14 @@ export async function getProjectResultsSections(
     `InterPro · ${n.entryCount ?? 0} entries`,
   );
 
-  // CLEAN — always honest about import-only
-  {
-    const pipeStep = stepByTool.get("clean");
-    sections.push({
-      tool: "clean",
-      label: "CLEAN",
-      moduleSlug: "clean",
-      status: pipeStep?.status === "skipped" ? "skipped" : "empty",
-      summary:
-        pipeStep?.summary ??
-        "CLEAN has no live Worker adapter — import-only.",
-      provenanceSource: null,
-      provenanceRetrievedAt: null,
-      normalized: null,
-      error: null,
-      skipReason:
-        pipeStep?.skipReason ??
-        "Live CLEAN automation unavailable; use the CLEAN module import workflow.",
-    });
-  }
+  await pushTool("clean", () => listCleanResults(db, projectId), (n) => {
+    const clean = n as unknown as CleanNormalizedResult;
+    const top = clean.topPrediction;
+    const origin = clean.kind === "clean-import" ? " (imported CSV)" : "";
+    return top
+      ? `CLEAN${origin} · top EC ${top.ecNumber}${top.enzymeName ? ` (${top.enzymeName})` : ""} · ${top.level} confidence ${top.score.toFixed(2)}`
+      : `CLEAN${origin} · no EC prediction returned`;
+  });
 
   await pushTool("swissdock", () => listSwissDockResults(db, projectId), (n) =>
     `SwissDock · ${n.poseCount ?? 0} poses`,

@@ -7,7 +7,7 @@ import {
 
 /**
  * Build the canonical classroom step list.
- * Skip decisions (InterPro / CLEAN / SwissDock) are applied at tick time
+ * Skip / unavailable decisions (InterPro / CLEAN / SwissDock) are applied at tick time
  * from live project context — never invent prerequisites.
  */
 export function buildInitialPipelineSteps(
@@ -28,7 +28,10 @@ export function buildInitialPipelineSteps(
 
 export function isTerminalStepStatus(status: PipelineStep["status"]): boolean {
   return (
-    status === "succeeded" || status === "failed" || status === "skipped"
+    status === "succeeded" ||
+    status === "failed" ||
+    status === "skipped" ||
+    status === "unavailable"
   );
 }
 

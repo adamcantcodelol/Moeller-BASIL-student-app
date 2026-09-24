@@ -14,7 +14,7 @@ import { getImportWorkflow } from "@/adapters/import/workflows";
 
 /**
  * Tools known to the platform.
- * RCSB + InterPro + Foldseek + SPRITE + BLAST + Dali + SwissDock are live; others are stubs or import-only.
+ * RCSB + InterPro + Foldseek + SPRITE + BLAST + Dali + CLEAN + SwissDock are live (CLEAN via cleanService, health-checked); others are stubs or import-only.
  */
 export const SCIENTIFIC_TOOL_IDS = [
   "rcsb",
@@ -72,7 +72,7 @@ export const SCIENTIFIC_TOOL_REGISTRY: readonly ScientificToolRegistration[] = [
   {
     id: "clean",
     displayName: "CLEAN",
-    liveAdapter: false,
+    liveAdapter: true,
     importSupported: true,
     moduleId: "clean",
   },

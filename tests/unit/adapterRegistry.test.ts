@@ -17,11 +17,12 @@ import { DaliSearchAdapter } from "@/adapters/dali";
 import { SwissDockSearchAdapter } from "@/adapters/swissdock";
 
 describe("adapter registry", () => {
-  it("exposes RCSB, InterPro, Foldseek, SPRITE, BLAST, Dali, and SwissDock as live adapters", () => {
+  it("exposes RCSB, InterPro, Foldseek, SPRITE, BLAST, Dali, CLEAN, and SwissDock as live adapters", () => {
     const tools = listScientificTools();
     const live = tools.filter((tool) => tool.liveAdapter);
     expect(live.map((tool) => tool.id).sort()).toEqual([
       "blast",
+      "clean",
       "dali",
       "foldseek",
       "interpro",

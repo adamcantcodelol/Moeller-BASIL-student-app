@@ -395,6 +395,34 @@ select {
   border-left-color: var(--navy-soft);
 }
 
+.pipeline-step-unavailable {
+  border-left-color: var(--gold);
+}
+
+.retry-step button {
+  margin-top: 0.35rem;
+}
+
+.clean-predictions td,
+.clean-predictions th {
+  padding: 0.3rem 0.6rem;
+  text-align: left;
+}
+
+.clean-level-high {
+  color: var(--ok);
+  font-weight: 600;
+}
+
+.clean-level-medium {
+  color: var(--navy-soft);
+  font-weight: 600;
+}
+
+.clean-level-low {
+  color: var(--muted);
+}
+
 .button-link {
   display: inline-block;
   padding: 0.55rem 0.9rem;
@@ -441,6 +469,11 @@ select {
 .result-status-running {
   color: var(--navy-soft);
   border-color: var(--navy-soft);
+}
+
+.result-status-unavailable {
+  color: #8a5a00;
+  border-color: var(--gold);
 }
 
 .hypothesis-split {

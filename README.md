@@ -6,9 +6,11 @@ Molecular Biology Research Course.
 ## Current status
 
 Classroom build is deployed on Cloudflare Workers. Live scientific paths:
-RCSB/Mol*, InterPro, Foldseek, SPRITE, BLAST, Dali, and SwissDock (Worker
-proxied so students never leave this site). CLEAN remains import-only after
-honest API probing. Import fallbacks remain when live upstream is down.
+RCSB/Mol*, InterPro, Foldseek, SPRITE, BLAST, Dali, CLEAN, and SwissDock
+(Worker proxied so students never leave this site). CLEAN uses the public UIUC
+MoleculeMaker API and is health-checked first: if its result storage is down
+the step is marked "unavailable" with a Retry button. Import fallbacks remain
+when live upstream is down.
 Results are never invented.
 
 ## What It Does

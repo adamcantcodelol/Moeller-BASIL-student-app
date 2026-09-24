@@ -95,13 +95,15 @@ export const LAB_EXPLAINERS: Record<string, LabExplainerCopy> = {
   clean: {
     summary: "What does this do?",
     paragraphs: [
-      "CLEAN predicts enzyme commission (EC) numbers from sequence — useful hints about possible chemistry.",
-      "Live CLEAN automation is not available here, so this lab is import-only: you upload a real CLEAN export. Results are never invented.",
+      "CLEAN is an AI model that reads your protein's amino-acid sequence and predicts its EC number — a four-part code for the kind of chemical reaction an enzyme speeds up (for example EC 4.2.1.1 is carbonic anhydrase).",
+      "The first digit is the big family (1 oxidoreductases, 2 transferases, 3 hydrolases, 4 lyases, 5 isomerases, 6 ligases, 7 translocases); each later digit narrows it down.",
+      "This app sends your RCSB sequence to the public CLEAN server at UIUC MoleculeMaker. Each prediction has a confidence score from 0 to 1: High is 0.8 or more, Medium is 0.2–0.8, Low is under 0.2.",
+      "If CLEAN's server can't return results, the step says so and offers Retry — you can also import a real CLEAN CSV. EC numbers are never invented.",
     ],
     lookFor: [
-      "EC numbers from your imported file",
-      "Confidence scores if CLEAN provided them",
-      "Whether predictions match other evidence",
+      "The top EC number and whether its confidence is High, Medium, or Low",
+      "The enzyme name for that EC number (click it for the ExPASy entry)",
+      "Whether the predicted chemistry fits SPRITE, InterPro, and BLAST evidence",
     ],
   },
   swissdock: {
