@@ -1,5 +1,6 @@
 import { EmptyScientificPanel } from "@/components/module/EmptyScientificPanel";
 import { ExecutionStateBadge } from "@/components/module/ExecutionStateBadge";
+import { LabExplainer } from "@/components/module/LabExplainer";
 import type { BasilModuleDefinition } from "@/types/module";
 import type { ModuleRun } from "@/types/moduleRun";
 
@@ -20,12 +21,14 @@ export function ModuleLayout({
           {module.name}{" "}
           {run ? <ExecutionStateBadge status={run.status} /> : null}
         </h2>
+        <LabExplainer labKey={module.id} />
         <p>
           <strong>Purpose.</strong> {module.purpose}
         </p>
-        <p>
-          <strong>Instructions.</strong> {module.instructions}
-        </p>
+        <details className="lab-instructions">
+          <summary>Full instructions</summary>
+          <p>{module.instructions}</p>
+        </details>
       </header>
       {children}
       {!module.implemented ? (

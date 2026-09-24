@@ -39,25 +39,47 @@ export default async function ProjectPage({
         structure={overview.structure}
       />
       <section className="card classroom-path">
-        <h2>Classroom path</h2>
-        <ol className="classroom-path-list">
+        <h2>Your path (4 steps)</h2>
+        <ol className="classroom-path-list classroom-path-numbered">
           <li>
-            <Link href={`/projects/${projectId}/modules/pdb-setup`}>
-              1. PDB setup (RCSB)
-            </Link>
+            <span className="path-step-num">1</span>
+            <div>
+              <Link href={`/projects/${projectId}/modules/pdb-setup`}>
+                Enter PDB
+              </Link>
+              <p className="muted path-hint">Load your protein from RCSB</p>
+            </div>
           </li>
           <li>
-            <Link href={`/projects/${projectId}/analysis`}>
-              2. Analysis progress
-            </Link>
+            <span className="path-step-num">2</span>
+            <div>
+              <Link href={`/projects/${projectId}/analysis`}>
+                Run analysis
+              </Link>
+              <p className="muted path-hint">
+                One button runs the live tools on this site
+              </p>
+            </div>
           </li>
           <li>
-            <Link href={`/projects/${projectId}/results`}>3. Results</Link>
+            <span className="path-step-num">3</span>
+            <div>
+              <Link href={`/projects/${projectId}/results`}>Results</Link>
+              <p className="muted path-hint">
+                See SPRITE pairs, BLAST hits, and more
+              </p>
+            </div>
           </li>
           <li>
-            <Link href={`/projects/${projectId}/hypothesis`}>
-              4. Hypothesis + ShannonBot
-            </Link>
+            <span className="path-step-num">4</span>
+            <div>
+              <Link href={`/projects/${projectId}/hypothesis`}>
+                Hypothesis
+              </Link>
+              <p className="muted path-hint">
+                Write your claim + chat with ShannonBot
+              </p>
+            </div>
           </li>
         </ol>
       </section>
@@ -67,15 +89,17 @@ export default async function ProjectPage({
         rcsbReady={rcsbReady}
       />
       <section className="card">
-        <h2>Curriculum modules</h2>
-        <p className="muted">
-          Optional deep dives — the classroom path above runs the live tools in
-          order.
-        </p>
-        <ModuleCardList
-          projectId={projectId}
-          moduleRuns={overview.moduleRuns}
-        />
+        <details className="all-modules-details">
+          <summary>All modules (optional deep dives)</summary>
+          <p className="muted">
+            The classroom path above is enough for class. Open a module only if
+            you need a closer look or an import fallback.
+          </p>
+          <ModuleCardList
+            projectId={projectId}
+            moduleRuns={overview.moduleRuns}
+          />
+        </details>
       </section>
     </AppShell>
   );

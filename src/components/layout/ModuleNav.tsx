@@ -14,19 +14,17 @@ export function ModuleNav({
       {projectId ? (
         <>
           <h2>Classroom path</h2>
-          <ol className="classroom-nav">
+          <ol className="classroom-nav classroom-nav-highlight">
             <li>
               <Link href={`/projects/${projectId}`}>Overview</Link>
             </li>
             <li>
               <Link href={`/projects/${projectId}/modules/pdb-setup`}>
-                PDB / RCSB
+                Enter PDB
               </Link>
             </li>
             <li>
-              <Link href={`/projects/${projectId}/analysis`}>
-                Analysis progress
-              </Link>
+              <Link href={`/projects/${projectId}/analysis`}>Analysis</Link>
             </li>
             <li>
               <Link href={`/projects/${projectId}/results`}>Results</Link>
@@ -39,31 +37,35 @@ export function ModuleNav({
           </ol>
         </>
       ) : null}
-      <h2>Curriculum 00–11</h2>
-      <ol className="curriculum-nav">
-        {CURRICULUM_MODULES.map((module) => {
-          const run = moduleRuns?.find((item) => item.moduleId === module.id);
-          const href = projectId
-            ? `/projects/${projectId}/modules/${module.slug}`
-            : undefined;
-          const label = `${module.number} ${module.name}`;
-          return (
-            <li key={module.id}>
-              {href ? (
-                <Link href={href}>
-                  {label}
-                  {run ? ` · ${run.status.replaceAll("_", " ")}` : ""}
-                </Link>
-              ) : (
-                <span className={module.implemented ? undefined : "unavailable"}>
-                  {label}
-                  {module.implemented ? "" : " · later phase"}
-                </span>
-              )}
-            </li>
-          );
-        })}
-      </ol>
+      <details className="curriculum-nav-details" open={!projectId}>
+        <summary>All labs 00–11</summary>
+        <ol className="curriculum-nav">
+          {CURRICULUM_MODULES.map((module) => {
+            const run = moduleRuns?.find((item) => item.moduleId === module.id);
+            const href = projectId
+              ? `/projects/${projectId}/modules/${module.slug}`
+              : undefined;
+            const label = `${module.number} ${module.name}`;
+            return (
+              <li key={module.id}>
+                {href ? (
+                  <Link href={href}>
+                    {label}
+                    {run ? ` · ${run.status.replaceAll("_", " ")}` : ""}
+                  </Link>
+                ) : (
+                  <span
+                    className={module.implemented ? undefined : "unavailable"}
+                  >
+                    {label}
+                    {module.implemented ? "" : " · later phase"}
+                  </span>
+                )}
+              </li>
+            );
+          })}
+        </ol>
+      </details>
     </nav>
   );
 }

@@ -7,6 +7,7 @@ import { FoldseekResults } from "@/components/foldseek/FoldseekResults";
 import { DaliResults } from "@/components/dali/DaliResults";
 import { InterProResults } from "@/components/interpro/InterProResults";
 import { SwissDockResults } from "@/components/swissdock/SwissDockResults";
+import { LabExplainer } from "@/components/module/LabExplainer";
 import type { BlastNormalizedSearch } from "@/adapters/blast";
 import type { FoldseekNormalizedSearch } from "@/adapters/foldseek";
 import type { DaliNormalizedSearch } from "@/adapters/dali";
@@ -124,6 +125,7 @@ export function ResultsSections({
               Open module page
             </Link>
           </header>
+          <LabExplainer labKey={section.tool} />
           <p>{section.summary}</p>
           {section.provenanceSource ? (
             <p className="muted provenance-line">

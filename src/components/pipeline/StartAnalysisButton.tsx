@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { AnalysisPipeline } from "@/types/pipeline";
+import { LabExplainer } from "@/components/module/LabExplainer";
 
 const MAX_TICKS = 400;
 const DEFAULT_TICK_MS = 4_000;
@@ -129,30 +130,30 @@ export function StartAnalysisButton({
 
   return (
     <div className="card classroom-cta">
-      <h2>Classroom analysis</h2>
-      <p>
-        After your PDB loads from RCSB, run the full live search sequence
-        (SPRITE → BLAST → Foldseek → Dali → InterPro when UniProt is mapped →
-        SwissDock when a ligand is present). CLEAN stays import-only and is
-        skipped honestly. BLAST uses the faster PDB protein database (pdbaa)
-        and does not block later tools. Results are never invented.
+      <h2>Start analysis</h2>
+      <LabExplainer labKey="analysis" />
+      <p className="classroom-cta-lead">
+        One click runs live tools on this site (SPRITE, BLAST, Foldseek, Dali,
+        and more when data allows). CLEAN is import-only and skipped honestly.
+        Results are never invented.
       </p>
       {!rcsbReady ? (
         <p className="muted">
-          Load RCSB metadata from Protein / PDB Setup first.
+          First: open <strong>Enter PDB</strong> and load RCSB metadata.
         </p>
       ) : null}
       <div className="mode-row">
         <button
           type="button"
+          className="primary-cta"
           onClick={() => void onStart()}
           disabled={!rcsbReady || running}
         >
           {running
-            ? "Analysis running…"
+            ? "Running…"
             : done
-              ? "Re-run full analysis"
-              : "Start full analysis"}
+              ? "Re-run analysis"
+              : "Start analysis"}
         </button>
         {done || pipeline?.status === "running" ? (
           <a className="button-link" href={`/projects/${projectId}/results`}>
