@@ -207,9 +207,10 @@ export function StartAnalysisButton({
       <h2>Start analysis</h2>
       <LabExplainer labKey="analysis" />
       <p className="classroom-cta-lead">
-        One click runs live tools on this site (SPRITE, BLAST, Foldseek, Dali,
-        CLEAN, and more when data allows). If an outside server is down, that
-        step says so and offers Retry. Results are never invented.
+        One click runs live tools on this site (SPRITE, Foldseek, Dali, InterPro,
+        SwissDock, and BLAST). CLEAN is optional and runs only when you ask for
+        it from Results. If an outside server is down, that step says so. Results
+        are never invented.
       </p>
       {!rcsbReady ? (
         <p className="muted">

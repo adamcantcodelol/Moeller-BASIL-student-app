@@ -62,12 +62,12 @@ export interface AnalysisPipeline {
 /** Canonical classroom auto-run order. */
 export const PIPELINE_STEP_ORDER: readonly PipelineTool[] = [
   "sprite",
-  "blast",
   "foldseek",
   "dali",
   "interpro",
   "clean",
   "swissdock",
+  "blast",
 ] as const;
 
 export const PIPELINE_TOOL_LABELS: Record<PipelineTool, string> = {

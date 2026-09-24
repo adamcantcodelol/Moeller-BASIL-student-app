@@ -1057,9 +1057,6 @@ export async function getProjectResultsSections(
   await pushTool("sprite", () => listSpriteResults(db, projectId), (n) =>
     `SPRITE · ${n.hitCount ?? 0} hits (RMSD ascending)`,
   );
-  await pushTool("blast", () => listBlastResults(db, projectId), (n) =>
-    `${(n as { methodLabel?: string }).methodLabel ?? "NCBI BLAST"} · ${n.hitCount ?? 0} hits`,
-  );
   await pushTool("foldseek", () => listFoldseekResults(db, projectId), (n) =>
     `Foldseek · ${n.hitCount ?? 0} hits`,
   );
@@ -1081,6 +1078,9 @@ export async function getProjectResultsSections(
 
   await pushTool("swissdock", () => listSwissDockResults(db, projectId), (n) =>
     `SwissDock · ${n.poseCount ?? 0} poses`,
+  );
+  await pushTool("blast", () => listBlastResults(db, projectId), (n) =>
+    `${(n as { methodLabel?: string }).methodLabel ?? "NCBI BLAST"} · ${n.hitCount ?? 0} hits`,
   );
 
   return { pipeline, sections };
