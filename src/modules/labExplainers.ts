@@ -110,7 +110,7 @@ export const LAB_EXPLAINERS: Record<string, LabExplainerCopy> = {
     summary: "What does this do?",
     paragraphs: [
       "SwissDock tries docking a small molecule (ligand) into your protein to see possible binding poses.",
-      "Docking is a computer model, not a lab experiment. The app only uses ligands found in your PDB (or a SMILES you provide) — it never invents ligands.",
+      "Docking is a computer model, not a lab experiment. You choose the ligand: one found in your PDB entry, a molecule looked up by name in RCSB/PubChem, or a SMILES you paste — the app never invents ligands.",
     ],
     lookFor: [
       "Docking scores and poses when a ligand is present",

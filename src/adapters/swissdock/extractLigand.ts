@@ -1,5 +1,5 @@
 /** Common solvent / crystallization additives — never treat as docking ligands. */
-const SKIP_RESIDUES = new Set([
+export const SKIP_RESIDUES = new Set([
   "HOH",
   "WAT",
   "DOD",
@@ -50,7 +50,7 @@ const SKIP_RESIDUES = new Set([
  * e.g. selenomethionine (MSE) in SAD-phased structures. MODRES records in the
  * PDB file are also honored.
  */
-const POLYMER_MODIFIED_RESIDUES = new Set([
+export const POLYMER_MODIFIED_RESIDUES = new Set([
   "MSE",
   "SEP",
   "TPO",
@@ -188,4 +188,141 @@ export function parseChemCompSmiles(payload: unknown): string | null {
     }
   }
   return null;
+}
+
+const WATER = new Set(["HOH", "WAT", "DOD", "H2O", "SOL", "TIP", "TP3", "TIP3"]);
+const IONS = new Set([
+  "CL", "NA", "K", "MG", "CA", "ZN", "MN", "FE", "FE2", "CU", "CO", "NI", "CD",
+  "HG", "IOD", "BR", "NH4", "UNX", "SO4", "PO4", "NO3",
+]);
+
+export type HetCategory = "ligand" | "modified-residue" | "additive" | "ion";
+
+export interface HetGroup {
+  resName: string;
+  chain: string;
+  resSeq: string;
+  atomCount: number;
+  category: HetCategory;
+  boxCenter: string;
+}
+
+export const HET_CATEGORY_LABELS: Record<HetCategory, string> = {
+  ligand: "Ligand bound in the crystal",
+  "modified-residue": "Modified amino acid — part of the protein chain, not a ligand",
+  additive: "Buffer / crystallization additive (usually not biologically meaningful)",
+  ion: "Ion or salt",
+};
+
+function centerText(xs: number[], ys: number[], zs: number[]): string {
+  const avg = (v: number[]) => v.reduce((a, b) => a + b, 0) / v.length;
+  return `${avg(xs).toFixed(3)}_${avg(ys).toFixed(3)}_${avg(zs).toFixed(3)}`;
+}
+
+/** Every non-water HETATM residue instance, labelled honestly (waters omitted). */
+export function listHetGroups(pdbText: string): HetGroup[] {
+  const lines = pdbText.split(/\r?\n/);
+  const modres = new Set(
+    lines
+      .filter((line) => line.startsWith("MODRES"))
+      .map((line) => line.slice(12, 15).trim().toUpperCase())
+      .filter(Boolean),
+  );
+  const groups = new Map<string, { g: Omit<HetGroup, "atomCount" | "boxCenter">; xs: number[]; ys: number[]; zs: number[] }>();
+  for (const line of lines) {
+    if (!line.startsWith("HETATM") || line.length < 54) continue;
+    const resName = line.slice(17, 20).trim().toUpperCase();
+    if (!resName || WATER.has(resName)) continue;
+    const chain = line[21]?.trim() || "A";
+    const resSeq = line.slice(22, 27).trim();
+    const x = Number(line.slice(30, 38));
+    const y = Number(line.slice(38, 46));
+    const z = Number(line.slice(46, 54));
+    if (![x, y, z].every(Number.isFinite)) continue;
+    const category: HetCategory =
+      POLYMER_MODIFIED_RESIDUES.has(resName) || modres.has(resName)
+        ? "modified-residue"
+        : IONS.has(resName)
+          ? "ion"
+          : SKIP_RESIDUES.has(resName)
+            ? "additive"
+            : "ligand";
+    const key = `${resName}|${chain}|${resSeq}`;
+    const entry = groups.get(key) ?? { g: { resName, chain, resSeq, category }, xs: [], ys: [], zs: [] };
+    entry.xs.push(x);
+    entry.ys.push(y);
+    entry.zs.push(z);
+    groups.set(key, entry);
+  }
+  const order: HetCategory[] = ["ligand", "additive", "ion", "modified-residue"];
+  return [...groups.values()]
+    .map(({ g, xs, ys, zs }) => ({ ...g, atomCount: xs.length, boxCenter: centerText(xs, ys, zs) }))
+    .sort(
+      (a, b) =>
+        order.indexOf(a.category) - order.indexOf(b.category) || b.atomCount - a.atomCount,
+    );
+}
+
+export interface ResidueRef {
+  chain?: string | null;
+  position: number | string;
+}
+
+/** Parse "A:114, A:207, 245" into residue refs (chain optional). */
+export function parseResidueList(text: string): ResidueRef[] {
+  return text
+    .split(/[\s,;]+/)
+    .map((token) => token.trim())
+    .filter(Boolean)
+    .map((token) => {
+      const m = token.match(/^(?:([A-Za-z0-9]):?)?(?:[A-Za-z]{3})?(-?\d+)$/);
+      const ref: ResidueRef | null = m ? { chain: m[1] ?? null, position: Number(m[2]) } : null;
+      return ref;
+    })
+    .filter((r): r is ResidueRef => r !== null);
+}
+
+/**
+ * Centroid of the listed residues' atoms (ATOM + HETATM) in the PDB text.
+ * Returns null when none of the residues exist — never guesses coordinates.
+ */
+export function residueCentroid(
+  pdbText: string,
+  residues: ResidueRef[],
+): { boxCenter: string; found: string[]; missing: string[] } | null {
+  const wanted = residues.map((r) => ({
+    chain: r.chain ? String(r.chain).toUpperCase() : null,
+    position: String(r.position).trim(),
+  }));
+  const xs: number[] = [];
+  const ys: number[] = [];
+  const zs: number[] = [];
+  const found = new Set<string>();
+  let firstModelDone = false;
+  for (const line of pdbText.split(/\r?\n/)) {
+    if (line.startsWith("ENDMDL")) firstModelDone = true;
+    if (firstModelDone) break;
+    if (!(line.startsWith("ATOM") || line.startsWith("HETATM")) || line.length < 54) continue;
+    const chain = (line[21] ?? "").trim().toUpperCase();
+    const resSeq = line.slice(22, 26).trim();
+    const match = wanted.find((w) => w.position === resSeq && (!w.chain || w.chain === chain));
+    if (!match) continue;
+    const x = Number(line.slice(30, 38));
+    const y = Number(line.slice(38, 46));
+    const z = Number(line.slice(46, 54));
+    if (![x, y, z].every(Number.isFinite)) continue;
+    xs.push(x);
+    ys.push(y);
+    zs.push(z);
+    found.add(`${chain}:${resSeq}:${line.slice(17, 20).trim()}`);
+  }
+  if (xs.length === 0) return null;
+  const foundKeys = [...found];
+  const missing = wanted
+    .filter((w) => !foundKeys.some((k) => {
+      const [c, p] = k.split(":");
+      return p === w.position && (!w.chain || w.chain === c);
+    }))
+    .map((w) => `${w.chain ? `${w.chain}:` : ""}${w.position}`);
+  return { boxCenter: centerText(xs, ys, zs), found: foundKeys, missing };
 }

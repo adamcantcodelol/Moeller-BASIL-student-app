@@ -31,6 +31,7 @@ import {
   BLAST_PIPELINE_TIMEOUT_MS,
 } from "@/adapters/blast";
 import { markJobFailed } from "@/lib/jobs/scientificJobService";
+import { SWISSDOCK_JOB_TIMEOUT_MS } from "@/adapters/swissdock";
 import {
   describeErrorForLog,
   toSafeErrorMessage,
@@ -267,7 +268,7 @@ function cleanUnavailablePatch(
 }
 
 /** SwissDock Vina jobs are capped at ~10 min of compute; allow queue time too. */
-export const SWISSDOCK_PIPELINE_TIMEOUT_MS = 20 * 60_000;
+export const SWISSDOCK_PIPELINE_TIMEOUT_MS = SWISSDOCK_JOB_TIMEOUT_MS;
 const SWISSDOCK_POLL_INTERVAL_MS = 15_000;
 
 export function isSwissDockStepTimedOut(step: PipelineStep, now = Date.now()): boolean {

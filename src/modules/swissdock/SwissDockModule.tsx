@@ -1,6 +1,6 @@
 import { ModuleLayout } from "@/components/module/ModuleLayout";
 import { NoteForm } from "@/components/module/NoteForm";
-import { RunSwissDockButton } from "@/components/swissdock/RunSwissDockButton";
+import { SwissDockLigandChooser } from "@/components/swissdock/SwissDockLigandChooser";
 import { SwissDockResults } from "@/components/swissdock/SwissDockResults";
 import { ImportToolForm } from "@/components/import-tool/ImportToolForm";
 import { CompleteImportModuleButton } from "@/components/import-tool/CompleteImportModuleButton";
@@ -33,12 +33,12 @@ export function SwissDockModule({
       <section className="card">
         <h3>Live SwissDock (Vina)</h3>
         <p className="muted">
-          Runs SwissDock through this app&apos;s Worker from your project PDB.
-          Ligand SMILES and box center come from HETATM + RCSB chemcomp when
-          present — nothing is invented. Docking stays distinct from
-          experimental structures.
+          Pick a small molecule, choose where on the protein to look, and
+          SwissDock (AutoDock Vina) predicts how it might fit. Docking poses are
+          predictions, not experimental structures. Every ligand comes from the
+          PDB entry, RCSB, PubChem, or your own SMILES — nothing is invented.
         </p>
-        <RunSwissDockButton projectId={projectId} pdbId={pdbId} />
+        <SwissDockLigandChooser projectId={projectId} pdbId={pdbId} />
       </section>
       <SwissDockResults normalized={normalized} jobs={jobs} />
       <ImportToolForm

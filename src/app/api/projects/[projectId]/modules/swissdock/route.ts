@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { getProjectDatabase } from "@/lib/db/request";
 import { handleServiceError, jsonError } from "@/lib/http";
 import {
@@ -7,6 +8,14 @@ import {
 } from "@/lib/services/swissdockService";
 
 export const dynamic = "force-dynamic";
+
+const ligandSchema = z.object({
+  name: z.string().trim().min(1).max(200),
+  source: z.enum(["structure", "rcsb-chemcomp", "pubchem", "smiles"]),
+  id: z.string().max(40).nullish(),
+  formula: z.string().max(80).nullish(),
+  smiles: z.string().trim().min(2).max(300),
+});
 
 export async function GET(
   _request: Request,
@@ -32,6 +41,8 @@ export async function POST(
     let boxSize: string | undefined;
     let pdbId: string | undefined;
     let exhaustiveness: number | undefined;
+    let ligand: z.infer<typeof ligandSchema> | undefined;
+    let boxLabel: string | undefined;
     const contentType = request.headers.get("content-type") ?? "";
     if (contentType.includes("application/json")) {
       const body = (await request.json()) as {
@@ -40,12 +51,21 @@ export async function POST(
         boxSize?: string;
         pdbId?: string;
         exhaustiveness?: number;
+        ligand?: unknown;
+        boxLabel?: unknown;
       };
       smiles = body.smiles;
       boxCenter = body.boxCenter;
       boxSize = body.boxSize;
       pdbId = body.pdbId;
       exhaustiveness = body.exhaustiveness;
+      if (body.ligand !== undefined) {
+        const parsed = ligandSchema.safeParse(body.ligand);
+        if (!parsed.success) return jsonError("Ligand choice is incomplete.", 400);
+        ligand = parsed.data;
+        smiles = parsed.data.smiles;
+      }
+      if (typeof body.boxLabel === "string") boxLabel = body.boxLabel.slice(0, 300);
     }
     const db = await getProjectDatabase(projectId);
     const result = await submitSwissDock(db, projectId, {
@@ -54,6 +74,10 @@ export async function POST(
       boxSize,
       pdbId,
       exhaustiveness,
+      ligand: ligand
+        ? { ...ligand, id: ligand.id ?? null, formula: ligand.formula ?? null }
+        : undefined,
+      boxLabel,
     });
     return Response.json(result, { status: result.pending ? 202 : 200 });
   } catch (error) {

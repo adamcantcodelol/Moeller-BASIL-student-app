@@ -780,3 +780,25 @@ button.chip-button {
   font-weight: 600;
   padding: 0.25rem 0;
 }
+
+/* SwissDock ligand chooser */
+.ligand-chooser h4 {
+  margin: 0.8rem 0 0.3rem;
+}
+
+.ligand-list {
+  list-style: none;
+  padding: 0;
+  margin: 0.3rem 0;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.ligand-chooser .mode-row input {
+  flex: 1 1 18rem;
+}
+
+code.smiles {
+  word-break: break-all;
+  font-size: 0.85em;
+}

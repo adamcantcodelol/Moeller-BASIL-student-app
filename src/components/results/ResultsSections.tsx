@@ -216,6 +216,16 @@ export function ResultsSections({
             <Link href={`/projects/${projectId}/modules/${section.moduleSlug}`}>
               Open module page
             </Link>
+            {section.tool === "swissdock" ? (
+              <>
+                {" · "}
+                <Link href={`/projects/${projectId}/modules/swissdock#ligand-chooser`}>
+                  {section.status === "succeeded"
+                    ? "Dock a different ligand"
+                    : "Choose a ligand to dock"}
+                </Link>
+              </>
+            ) : null}
           </p>
           <LabExplainer labKey={section.tool} />
           <p>{section.summary}</p>

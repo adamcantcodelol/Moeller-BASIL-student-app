@@ -36,9 +36,24 @@ export function SwissDockResults({
     <div className="card">
       <h3>Normalized SwissDock results</h3>
       <p className="muted">
-        Session {normalized.sessionNumber} · PDB {normalized.pdbId} · SMILES{" "}
-        {normalized.smiles} · phase {normalized.phase}
+        Session {normalized.sessionNumber} · PDB {normalized.pdbId} · phase{" "}
+        {normalized.phase}
       </p>
+      <ul className="docking-choice">
+        <li>
+          <strong>Ligand:</strong> {normalized.ligand?.name ?? "not recorded"}
+          {normalized.ligand?.formula ? ` · ${normalized.ligand.formula}` : ""}
+          {normalized.ligand?.id ? ` · ${normalized.ligand.id}` : ""}
+          {normalized.ligand ? ` (${normalized.ligand.source})` : ""} ·{" "}
+          <code className="smiles">{normalized.smiles}</code>
+        </li>
+        <li>
+          <strong>Docking box:</strong>{" "}
+          {normalized.box
+            ? `${normalized.box.label} · center ${normalized.box.center.replace(/_/g, ", ")} · size ${normalized.box.size.replace(/_/g, " × ")} Å`
+            : "not recorded for this run"}
+        </li>
+      </ul>
       <p className="muted">
         Source: {normalized.provenance.source} ·{" "}
         {normalized.provenance.retrievedAt}
@@ -47,7 +62,7 @@ export function SwissDockResults({
         {normalized.statusSummary}
       </pre>
       {normalized.poses.length > 0 ? (
-        <DataCollapse label="Docking poses" count={normalized.poses.length} noun="poses">
+        <DataCollapse label="Docking poses (Vina affinity, kcal/mol — more negative = tighter predicted binding)" count={normalized.poses.length} noun="poses">
           <div className="table-wrap">
             <table className="data-table">
               <thead>

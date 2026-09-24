@@ -32,6 +32,9 @@ export interface SwissDockRawPayload {
     | "error";
   /** Raw checkstatus / retrieve text when available. */
   resultsText: string | null;
+  /** Box actually sent to SwissDock (set on submit). */
+  boxCenter?: string;
+  boxSize?: string;
 }
 
 export interface SwissDockPoseNormalized {
@@ -40,7 +43,27 @@ export interface SwissDockPoseNormalized {
   note: string | null;
 }
 
+/** SwissDock's Vina limit is ~10 min compute; allow queue time too. */
+export const SWISSDOCK_JOB_TIMEOUT_MS = 20 * 60_000;
+
+/** What the student chose (recorded alongside results). */
+export interface SwissDockLigandChoice {
+  name: string;
+  source: "structure" | "rcsb-chemcomp" | "pubchem" | "smiles";
+  id?: string | null;
+  formula?: string | null;
+  smiles: string;
+}
+
+export interface SwissDockBoxChoice {
+  center: string;
+  size: string;
+  label: string;
+}
+
 export interface SwissDockNormalizedSearch {
+  ligand?: SwissDockLigandChoice | null;
+  box?: SwissDockBoxChoice | null;
   sessionNumber: string;
   pdbId: string;
   smiles: string;

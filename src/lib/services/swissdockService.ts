@@ -10,9 +10,35 @@ import { ServiceError } from "@/lib/services/projectService";
 import {
   createSwissDockSearchAdapter,
   SwissDockAdapterError,
+  SWISSDOCK_JOB_TIMEOUT_MS,
+  type SwissDockLigandChoice,
   type SwissDockNormalizedSearch,
   type SwissDockRawPayload,
 } from "@/adapters/swissdock";
+
+/** Attach the recorded ligand/box choice (from job parameters) to results. */
+function withChoice(
+  normalized: SwissDockNormalizedSearch,
+  params: Record<string, unknown>,
+): SwissDockNormalizedSearch {
+  const ligand = (params.ligand as SwissDockLigandChoice | undefined) ?? null;
+  const center = typeof params.boxCenter === "string" ? params.boxCenter : null;
+  return {
+    ...normalized,
+    ligand: ligand ?? {
+      name: "Auto-picked from PDB",
+      source: "structure",
+      smiles: normalized.smiles,
+    },
+    box: center
+      ? {
+          center,
+          size: typeof params.boxSize === "string" ? params.boxSize : "20_20_20",
+          label: typeof params.boxLabel === "string" ? params.boxLabel : "Auto: centered on the PDB ligand",
+        }
+      : null,
+  };
+}
 import { validatePdbId } from "@/lib/validation/pdbId";
 import {
   createScientificJob,
@@ -117,6 +143,8 @@ export async function submitSwissDock(
     boxSize?: string;
     pdbId?: string;
     exhaustiveness?: number;
+    ligand?: SwissDockLigandChoice;
+    boxLabel?: string;
   },
 ) {
   const project = await getProjectById(db, projectId);
@@ -159,17 +187,20 @@ export async function submitSwissDock(
       exhaustiveness: options?.exhaustiveness,
     });
     const timestamp = nowIso();
+    const jobParams: Record<string, unknown> = {
+      pdbId: validation.pdbId,
+      smiles: raw.smiles,
+      boxCenter: raw.boxCenter ?? options?.boxCenter ?? null,
+      boxSize: raw.boxSize ?? options?.boxSize ?? "20_20_20",
+      boxLabel: options?.boxLabel ?? (options?.boxCenter ? "Student-chosen box" : "Auto: centered on the PDB ligand"),
+      ligand: options?.ligand ? { ...options.ligand, smiles: raw.smiles } : null,
+      sessionNumber: raw.sessionNumber,
+      phase: raw.phase,
+    };
     await db
       .update(scientificJobs)
       .set({
-        parametersJson: JSON.stringify({
-          pdbId: validation.pdbId,
-          smiles: raw.smiles,
-          boxCenter: options?.boxCenter ?? null,
-          boxSize: options?.boxSize ?? "20_20_20",
-          sessionNumber: raw.sessionNumber,
-          phase: raw.phase,
-        }),
+        parametersJson: JSON.stringify(jobParams),
         updatedAt: timestamp,
       })
       .where(eq(scientificJobs.id, job.id));
@@ -182,7 +213,7 @@ export async function submitSwissDock(
         normalized: null as SwissDockNormalizedSearch | null,
       };
     }
-    const normalized = adapter.normalize(raw);
+    const normalized = withChoice(adapter.normalize(raw), jobParams);
     const persisted = await persistSuccess(db, {
       projectIsDemo: project.isDemo,
       moduleRunId: run.id,
@@ -239,6 +270,13 @@ export async function pollSwissDockJob(
     };
   }
 
+  const startedMs = Date.parse(job.startedAt ?? job.createdAt);
+  if (Number.isFinite(startedMs) && Date.now() - startedMs >= SWISSDOCK_JOB_TIMEOUT_MS) {
+    const message = `SwissDock did not finish within ${Math.round(SWISSDOCK_JOB_TIMEOUT_MS / 60_000)} minutes. No poses were invented. Try again or import results.`;
+    await markJobFailed(db, job.id, message);
+    throw new ServiceError(message, 504);
+  }
+
   const adapter = createSwissDockSearchAdapter();
   try {
     const raw = await adapter.pollSession(sessionNumber, pdbId, smiles, {
@@ -265,7 +303,7 @@ export async function pollSwissDockJob(
         normalized: null as SwissDockNormalizedSearch | null,
       };
     }
-    const normalized = adapter.normalize(raw);
+    const normalized = withChoice(adapter.normalize(raw), params);
     const run = await getModuleRun(db, projectId, SWISSDOCK_MODULE_ID);
     if (!run) throw new ServiceError("SwissDock module run is missing.", 500);
     const persisted = await persistSuccess(db, {

@@ -193,7 +193,7 @@ export class SwissDockSearchAdapter
       if (!extracted) {
         throw new SwissDockAdapterError(
           "VALIDATION",
-          `No non-solvent HETATM ligand found in ${pdbId}. Provide a SMILES only if your curriculum ligand is not in the PDB. Nothing was invented.`,
+          `No non-solvent HETATM ligand found in ${pdbId} (only water, ions, buffer additives or modified residues). Choose a ligand on the SwissDock module page — search by name or paste a SMILES. Nothing was invented.`,
         );
       }
       ligandResName = extracted.resName;
@@ -327,10 +327,11 @@ export class SwissDockSearchAdapter
       retrievedAt,
     );
 
-    return this.pollSession(sessionNumber, pdbId, smiles, {
+    const polled = await this.pollSession(sessionNumber, pdbId, smiles, {
       allowPending: true,
       retrievedAt,
     });
+    return { ...polled, boxCenter, boxSize };
   }
 
   async pollSession(
