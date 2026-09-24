@@ -14,6 +14,8 @@ export interface LlmChatRequest {
   messages: LlmChatMessage[];
   /** Override default model for the selected provider. */
   model?: string;
+  /** Cap on generated tokens (default 700). */
+  maxTokens?: number;
   /** Request timeout in ms (default 12s). */
   timeoutMs?: number;
 }

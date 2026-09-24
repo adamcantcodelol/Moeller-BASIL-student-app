@@ -1,5 +1,6 @@
 export {
   chatWithShannonBotProviders,
+  chatWithProviderList,
   describeMissingAiKeys,
   hasShannonBotApiKey,
   readShannonBotEnvKeys,

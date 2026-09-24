@@ -16,12 +16,18 @@ import {
   toLlmMessages,
   type ShannonBotMessage,
 } from "@/ai/shannonBot";
+import { chatWithProviderList, describeMissingAiKeys } from "@/ai/providers";
 import {
-  chatWithShannonBotProviders,
-  describeMissingAiKeys,
-  hasShannonBotApiKey,
-  readShannonBotEnvKeys,
-} from "@/ai/providers";
+  buildShannonBotProviders,
+  getSettingsSecret,
+  loadSavedAiKeys,
+} from "@/lib/settings/aiKeys";
+
+/** Teacher-saved keys first, then Worker secret/env keys. */
+async function resolveProviders(db: AppDatabase) {
+  const saved = await loadSavedAiKeys(db, await getSettingsSecret()).catch(() => ({}));
+  return buildShannonBotProviders(saved);
+}
 
 export interface ShannonBotConversation {
   id: string;
@@ -46,7 +52,7 @@ export async function getShannonBotConversation(
     .from(aiConversations)
     .where(eq(aiConversations.projectId, projectId))
     .limit(1);
-  const hasKey = hasShannonBotApiKey(readShannonBotEnvKeys());
+  const hasKey = (await resolveProviders(db)).length > 0;
   const blocker = hasKey ? null : describeMissingAiKeys();
 
   if (rows.length === 0) {
@@ -110,8 +116,8 @@ export async function sendShannonBotMessage(
       ? []
       : parseJson<ShannonBotMessage[]>(existing[0].messagesJson, []);
 
-  const keys = readShannonBotEnvKeys();
-  const hasKey = hasShannonBotApiKey(keys);
+  const providers = await resolveProviders(db);
+  const hasKey = providers.length > 0;
   const localReply = generateShannonBotReply(text, context);
 
   let replyContent = localReply;
@@ -121,7 +127,7 @@ export async function sendShannonBotMessage(
   const blocker = hasKey ? null : describeMissingAiKeys();
 
   if (hasKey) {
-    const llmResult = await chatWithShannonBotProviders(
+    const llmResult = await chatWithProviderList(
       {
         messages: toLlmMessages(
           priorMessages,
@@ -129,7 +135,7 @@ export async function sendShannonBotMessage(
           text,
         ),
       },
-      keys,
+      providers,
     );
     if (llmResult.ok) {
       replyContent = llmResult.content;

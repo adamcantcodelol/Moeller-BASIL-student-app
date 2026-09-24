@@ -298,9 +298,16 @@ export const classes = sqliteTable("classes", {
   createdAt: text("created_at").notNull(),
 });
 
+export const appSettings = sqliteTable("app_settings", {
+  key: text("key").primaryKey(),
+  value: text("value").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});
+
 export const schema = {
   projects,
   classes,
+  appSettings,
   structures,
   modules,
   moduleRuns,

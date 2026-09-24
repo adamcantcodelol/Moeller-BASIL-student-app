@@ -39,7 +39,7 @@ export function readShannonBotEnvKeys(
 }
 
 export function describeMissingAiKeys(): string {
-  return "No free-tier AI API key configured (set GROQ_API_KEY or OPENROUTER_API_KEY server-side). ShannonBot is running in local Socratic mode and will not invent scientific results.";
+  return "No free-tier AI API key configured (a teacher can paste a Groq or OpenRouter key in teacher mode, or set GROQ_API_KEY / OPENROUTER_API_KEY server-side). ShannonBot is running in local Socratic mode and will not invent scientific results.";
 }
 
 export function hasShannonBotApiKey(keys: ShannonBotEnvKeys = readShannonBotEnvKeys()): boolean {
@@ -95,7 +95,14 @@ export async function chatWithShannonBotProviders(
   keys: ShannonBotEnvKeys = readShannonBotEnvKeys(),
   fetchImpl?: typeof fetch,
 ): Promise<LlmChatResult> {
-  const providers = resolveShannonBotProviders(keys, fetchImpl);
+  return chatWithProviderList(request, resolveShannonBotProviders(keys, fetchImpl));
+}
+
+/** Try an explicit ordered provider list (e.g. teacher-saved keys, then env keys). */
+export async function chatWithProviderList(
+  request: LlmChatRequest,
+  providers: LlmProvider[],
+): Promise<LlmChatResult> {
   if (providers.length === 0) {
     return {
       ok: false,

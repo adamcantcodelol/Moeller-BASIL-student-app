@@ -36,7 +36,7 @@ export async function postOpenAiCompatibleChat(options: {
         model,
         messages: options.request.messages,
         temperature: 0.3,
-        max_tokens: 700,
+        max_tokens: options.request.maxTokens ?? 700,
       }),
       signal: AbortSignal.timeout(timeoutMs),
     });
