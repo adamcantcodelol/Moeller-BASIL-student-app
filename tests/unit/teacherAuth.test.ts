@@ -34,12 +34,18 @@ describe("teacher auth", () => {
   it("locks out after repeated failures", () => {
     const ip = "203.0.113.9";
     const now = 1_700_000_000_000;
-    for (let i = 0; i < 4; i += 1) recordLoginFailure(ip, now);
+    for (let i = 0; i < 19; i += 1) recordLoginFailure(ip, now);
     expect(loginBlockedFor(ip, now)).toBe(0);
     recordLoginFailure(ip, now);
     expect(loginBlockedFor(ip, now)).toBeGreaterThan(0);
-    expect(loginBlockedFor(ip, now + 6 * 60 * 1000)).toBe(0);
+    expect(loginBlockedFor(ip, now + 2 * 60 * 1000)).toBe(0);
     clearLoginFailures(ip);
     expect(loginBlockedFor(ip, now)).toBe(0);
+  });
+
+  it("accepts the password with different spacing, dashes or case", async () => {
+    const { verifyTeacherPassword } = await import("@/lib/auth/teacherToken");
+    expect(await verifyTeacherPassword(" bsw8 yvhc-6GTV-xgx2\n", "BSw8-Yvhc-6gtv-xgx2")).toBe(true);
+    expect(await verifyTeacherPassword("BSw8-Yvhc-6gtv-xgx3", "BSw8-Yvhc-6gtv-xgx2")).toBe(false);
   });
 });

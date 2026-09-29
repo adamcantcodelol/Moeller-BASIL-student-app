@@ -38,6 +38,11 @@ function constantTimeEqual(a: string, b: string): boolean {
 }
 
 /** Compare a submitted password without leaking length/timing. */
+/** Forgiving comparison: ignore surrounding/inner spaces, dashes and letter case. */
+export function normalizeTeacherPassword(value: string): string {
+  return value.replace(/[\s\-\u2010-\u2015]/g, "").toLowerCase();
+}
+
 export async function verifyTeacherPassword(
   submitted: string,
   actual: string | undefined,
@@ -45,8 +50,8 @@ export async function verifyTeacherPassword(
   if (!actual) return false;
   const pepper = encoder.encode("basil-teacher-password-check");
   const [a, b] = await Promise.all([
-    hmac(pepper, submitted),
-    hmac(pepper, actual),
+    hmac(pepper, normalizeTeacherPassword(submitted)),
+    hmac(pepper, normalizeTeacherPassword(actual)),
   ]);
   return constantTimeEqual(toHex(a), toHex(b));
 }
@@ -80,13 +85,13 @@ const failures = new Map<string, { count: number; until: number }>();
 export function loginBlockedFor(ip: string, now = Date.now()): number {
   const entry = failures.get(ip);
   if (!entry || entry.until <= now) return 0;
-  return entry.count >= 5 ? entry.until - now : 0;
+  return entry.count >= 20 ? entry.until - now : 0;
 }
 
 export function recordLoginFailure(ip: string, now = Date.now()): void {
   const entry = failures.get(ip);
   const count = entry && entry.until > now ? entry.count + 1 : 1;
-  failures.set(ip, { count, until: now + 5 * 60 * 1000 });
+  failures.set(ip, { count, until: now + 60 * 1000 });
   if (failures.size > 1000) failures.clear();
 }
 

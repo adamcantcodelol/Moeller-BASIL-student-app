@@ -14,7 +14,6 @@ async function postJson(url: string, method: string, body?: unknown) {
 }
 
 export function TeacherLoginForm() {
-  const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   return (
@@ -31,12 +30,12 @@ export function TeacherLoginForm() {
           setError(result.error ?? "Sign-in failed.");
           return;
         }
-        router.refresh();
+        window.location.reload();
       }}
     >
       <label>
         Teacher password
-        <input name="password" type="password" required autoComplete="current-password" />
+        <input name="password" type="password" required autoComplete="off" autoCapitalize="none" spellCheck={false} />
       </label>
       {error ? <p className="error">{error}</p> : null}
       <button type="submit" disabled={pending}>
