@@ -1,6 +1,6 @@
-import { eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import type { AppDatabase } from "@/db/client";
-import { results } from "@/db/schema";
+import { moduleRuns, results } from "@/db/schema";
 import type { ToolResultSection } from "@/lib/services/pipelineService";
 import { chainResidues, fetchRcsbPdbText, oneLetter, parsePdbAtoms } from "@/lib/structure/pdbAtoms";
 import type { Evidence } from "@/types/evidence";
@@ -78,7 +78,7 @@ export function candidateResidues(sections: ToolResultSection[], evidence: Evide
     .slice(0, 3);
   for (const hit of hits) {
     for (const r of hit.matchResidues ?? []) {
-      if (r.resNo) add(r.chain ?? null, r.resNo, toOne(r.resType), `SPRITE match to ${hit.pdbId} (RMSD ${hit.rmsd})`);
+      if (r.resNo) add(r.chain ?? null, r.resNo, toOne(r.resType), `SPRITE ${hit.pdbId} RMSD ${hit.rmsd}`);
     }
   }
   for (const e of evidence) {
@@ -111,10 +111,21 @@ function verifiedNumbering(residues: { resNo: string; resName: string }[], seque
   return residues.slice(offset, offset + sequence.length).map((r) => r.resNo);
 }
 
-async function loadRaw(db: AppDatabase, section: ToolResultSection | undefined): Promise<Record<string, unknown> | null> {
-  const rawId = (section?.normalized as { provenance?: { rawResultId?: string | null } } | null)?.provenance?.rawResultId;
-  if (!rawId) return null;
-  const rows = await db.select().from(results).where(eq(results.id, rawId));
+/** Raw payload behind a section: by provenance rawResultId, else the module's latest stored raw row. */
+async function loadRaw(db: AppDatabase, projectId: string, section: ToolResultSection | undefined): Promise<Record<string, unknown> | null> {
+  if (!section) return null;
+  const rawId = (section.normalized as { provenance?: { rawResultId?: string | null } } | null)?.provenance?.rawResultId;
+  const rows = rawId
+    ? await db.select().from(results).where(eq(results.id, rawId))
+    : (
+        await db
+          .select()
+          .from(results)
+          .innerJoin(moduleRuns, eq(results.moduleRunId, moduleRuns.id))
+          .where(and(eq(moduleRuns.projectId, projectId), eq(moduleRuns.moduleId, section.moduleSlug), eq(results.type, "raw")))
+          .orderBy(desc(results.createdAt))
+          .limit(1)
+      ).map((r) => r.results);
   try {
     return rows[0]?.rawDataJson ? (JSON.parse(rows[0].rawDataJson) as Record<string, unknown>) : null;
   } catch {
@@ -129,7 +140,7 @@ type FoldseekAln = {
 
 export async function loadExportExtras(
   db: AppDatabase,
-  input: { pdbId: string | null; sections: ToolResultSection[]; evidence: Evidence[] },
+  input: { projectId: string; pdbId: string | null; sections: ToolResultSection[]; evidence: Evidence[] },
   fetchImpl: typeof fetch = fetch,
 ): Promise<ExportExtras> {
   const candidates = candidateResidues(input.sections, input.evidence);
@@ -137,7 +148,7 @@ export async function loadExportExtras(
   if (!candidates.length) return extras;
 
   // InterPro: does UniProt numbering match the PDB numbering at the candidate positions?
-  const interproRaw = await loadRaw(db, input.sections.find((s) => s.tool === "interpro" && s.status === "succeeded"));
+  const interproRaw = await loadRaw(db, input.projectId, input.sections.find((s) => s.tool === "interpro" && s.status === "succeeded"));
   const meta = (interproRaw?.protein as { metadata?: { accession?: string; sequence?: string } } | undefined)?.metadata;
   if (meta?.sequence && meta.accession) {
     const checked = candidates.filter((c) => c.aa);
@@ -157,7 +168,7 @@ export async function loadExportExtras(
   }
 
   // Foldseek: which residues of the top non-self hits align to the candidates?
-  const foldseekRaw = await loadRaw(db, input.sections.find((s) => s.tool === "foldseek" && s.status === "succeeded"));
+  const foldseekRaw = await loadRaw(db, input.projectId, input.sections.find((s) => s.tool === "foldseek" && s.status === "succeeded"));
   const result = foldseekRaw?.result as { queries?: { sequence?: string }[]; results?: { alignments?: unknown[] }[] } | undefined;
   if (!result?.results?.length || !input.pdbId) {
     extras.foldseekNote = foldseekRaw ? "Foldseek alignments were not found in the stored result." : "Foldseek alignment details are not stored for this run.";

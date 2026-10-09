@@ -29,6 +29,7 @@ export async function GET(
       db.select().from(notes).where(eq(notes.projectId, projectId)),
     ]);
     const extras = await loadExportExtras(db, {
+      projectId,
       pdbId: overview.structure?.pdbId ?? null,
       sections,
       evidence,
