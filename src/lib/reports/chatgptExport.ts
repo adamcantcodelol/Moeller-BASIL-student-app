@@ -88,17 +88,18 @@ function residues(list: Residue[] | undefined): string {
 }
 
 function statusText(section: ToolResultSection): string {
+  const end = (t: string) => t.trim().replace(/\.+$/, "");
   switch (section.status) {
     case "empty":
       return "NOT RUN - no stored result. Do not assume any values for this tool.";
     case "running":
       return `STILL RUNNING / incomplete - no result stored yet. (${section.summary})`;
     case "skipped":
-      return `SKIPPED - ${section.skipReason ?? section.summary}. No result stored.`;
+      return `SKIPPED - ${end(section.skipReason ?? section.summary)}. No result stored.`;
     case "unavailable":
-      return `UNAVAILABLE - ${section.summary} No result stored.`;
+      return `UNAVAILABLE - ${end(section.summary)}. No result stored.`;
     case "failed":
-      return `FAILED - ${section.error ?? section.summary}. No result stored.`;
+      return `FAILED - ${end(section.error ?? section.summary)}. No result stored.`;
     default:
       return "Result stored (see below).";
   }
