@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AppShell } from "@/components/layout/AppShell";
 import { DemoBanner } from "@/components/demo/DemoBanner";
+import { ChatGptExportButton } from "@/components/reports/ChatGptExportButton";
 import { ResultsSections } from "@/components/results/ResultsSections";
 import { getProjectPageDatabase } from "@/lib/db/request";
 import { getProjectOverview, ServiceError } from "@/lib/services/projectService";
@@ -56,6 +57,7 @@ export default async function ResultsPage({
             Continue to Hypothesis
           </Link>
         </div>
+        <ChatGptExportButton projectId={projectId} />
       </section>
       <ResultsSections
         projectId={projectId}

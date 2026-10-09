@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AppShell } from "@/components/layout/AppShell";
 import { DemoBanner } from "@/components/demo/DemoBanner";
+import { ChatGptExportButton } from "@/components/reports/ChatGptExportButton";
 import { HypothesisForm } from "@/components/hypothesis/HypothesisForm";
 import { ShannonBotChat } from "@/components/shannonbot/ShannonBotChat";
 import { getProjectPageDatabase } from "@/lib/db/request";
@@ -54,6 +55,7 @@ export default async function HypothesisPage({
             Full ShannonBot module
           </Link>
         </div>
+        <ChatGptExportButton projectId={projectId} />
       </section>
 
       <div className="hypothesis-split">

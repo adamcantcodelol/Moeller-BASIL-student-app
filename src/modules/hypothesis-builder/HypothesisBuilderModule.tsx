@@ -1,4 +1,5 @@
 import { ModuleLayout } from "@/components/module/ModuleLayout";
+import { ChatGptExportButton } from "@/components/reports/ChatGptExportButton";
 import { NoteForm } from "@/components/module/NoteForm";
 import { HypothesisForm } from "@/components/hypothesis/HypothesisForm";
 import { CompleteImportModuleButton } from "@/components/import-tool/CompleteImportModuleButton";
@@ -90,6 +91,10 @@ export function HypothesisBuilderModule({
           disabled={!hypothesis || run?.status === "complete"}
           alreadyComplete={run?.status === "complete"}
         />
+      </section>
+      <section className="card">
+        <h3>Export for ChatGPT (ShannonGPT)</h3>
+        <ChatGptExportButton projectId={projectId} />
       </section>
     </ModuleLayout>
   );

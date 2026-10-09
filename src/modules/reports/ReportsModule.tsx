@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ModuleLayout } from "@/components/module/ModuleLayout";
+import { ChatGptExportButton } from "@/components/reports/ChatGptExportButton";
 import { NoteForm } from "@/components/module/NoteForm";
 import type { BasilModuleDefinition } from "@/types/module";
 import type { ModuleRun } from "@/types/moduleRun";
@@ -75,6 +76,10 @@ export function ReportsModule({
           <pre className="provenance-block">{teacher}</pre>
         </section>
       ) : null}
+      <section className="card">
+        <h3>Export for ChatGPT (ShannonGPT)</h3>
+        <ChatGptExportButton projectId={projectId} />
+      </section>
       <section className="card">
         <h3>Student observations</h3>
         <NoteForm projectId={projectId} moduleId={module.id} />

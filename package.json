@@ -2,7 +2,7 @@
   "name": "moeller-basil",
   "version": "0.1.0",
   "private": true,
-  "description": "Moeller BASIL Protein Platform \u2014 educational bioinformatics workflow for Moeller High School",
+  "description": "Moeller BASIL Protein Platform — educational bioinformatics workflow for Moeller High School",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -23,6 +23,7 @@
     "@opennextjs/cloudflare": "^1.20.6",
     "drizzle-orm": "^0.45.2",
     "next": "^16.3.5",
+    "pdf-lib": "^1.17.1",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "zod": "^4.6.5"
