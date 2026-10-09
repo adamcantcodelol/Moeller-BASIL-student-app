@@ -39,6 +39,9 @@ export function DaliResults({
         {normalized.pdbId}
         {normalized.chain} · {normalized.hitCount} hit
         {normalized.hitCount === 1 ? "" : "s"}
+        {normalized.hits.length < normalized.hitCount
+          ? ` · showing top ${normalized.hits.length} of ${normalized.hitCount} by Z-score (only the best hits are kept)`
+          : ""}
       </p>
       <p className="muted">
         Source: {normalized.provenance.source} ·{" "}

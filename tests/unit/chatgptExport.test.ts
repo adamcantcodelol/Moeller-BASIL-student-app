@@ -9,7 +9,8 @@ import {
 } from "@/lib/reports/chatgptExport";
 import { renderExportPdf, toWinAnsi } from "@/lib/reports/chatgptPdf";
 import type { ToolResultSection } from "@/lib/services/pipelineService";
-import { alignmentIndexMap, candidateResidues } from "@/lib/reports/chatgptExtras";
+import { alignmentIndexMap, candidateResidues, mapDaliResidue } from "@/lib/reports/chatgptExtras";
+import { parseDaliEquivalences, selectTopDaliHits, trimDaliRawPayload } from "@/adapters/dali/normalize";
 import { firstPdbqtModel, parsePdbqtAtoms, parsePdbAtoms, residueDistances } from "@/lib/structure/pdbAtoms";
 
 function section(partial: Partial<ToolResultSection> & Pick<ToolResultSection, "tool" | "status">): ToolResultSection {
@@ -136,10 +137,57 @@ describe("residue extras", () => {
       cutoff: 4, measuredWithin: 8, method: "test",
       residues: [{ chain: "A", resNo: "102", resName: "SER", minDistance: 3.1, closestAtom: "OG" }],
     };
-    const text = exportToText(buildChatGptExport({ ...withContacts, extras: { candidates, foldseekMaps: [], foldseekNote: null, interpro: null } }));
+    const text = exportToText(buildChatGptExport({ ...withContacts, extras: { candidates, foldseekMaps: [], foldseekNote: null, daliMaps: [], daliNote: null, interpro: null } }));
     expect(text).toContain("SER102(A) 3.10 Å");
     expect(text).toContain("SER102(A): IN CONTACT - closest atom OG at 3.10 Å");
     expect(exportToText(buildChatGptExport(input))).toContain("Best-pose contacts: not available for this run.");
   });
 });
 
+
+const DALI_TEXT = [
+  "# Job: x",
+  "# Query: 2qruA",
+  "# No:  Chain   Z    rmsd lali nres  %id PDB  Description",
+  "   1:  2qru-A 51.4  0.0  272   272  100   MOLECULE: UNCHARACTERIZED PROTEIN;",
+  "   2:  1abc-B  9.0  3.0  100   300   12   MOLECULE: OTHER;",
+  "   3:  3h04-A 32.5  2.1  259   272   27   MOLECULE: UNCHARACTERIZED PROTEIN;",
+  "",
+  "# Structural equivalences",
+  "   1: mol1-A 2qru-A     1 - 272 <=>    1 - 272   (ALA    1  - ARG  272  <=> ALA    1  - ARG  272 )",
+  "   2: mol1-A 1abc-B     5 -  20 <=>   40 -  55   (GLY    5  - LEU   20  <=> PRO   41  - VAL   56 )",
+  "   3: mol1-A 3h04-A    95 - 110 <=>   97 - 112   (GLY   95  - LEU  110  <=> ALA   97  - VAL  112 )",
+  "   3: mol1-A 3h04-A   240 - 250 <=>  241 - 251   (VAL  240  - GLU  250  <=> ILE  241  - LYS  251 )",
+  "# Translation-rotation matrices",
+  "-matrix- lots of numbers",
+].join("\n");
+
+describe("Dali top hits + residue mapping", () => {
+  it("keeps only the top hits by Z with their aligned segments, and the total count", () => {
+    const { total, hits } = selectTopDaliHits(DALI_TEXT, 2);
+    expect(total).toBe(3);
+    expect(hits.map((h) => h.pdbChain)).toEqual(["2qru-A", "3h04-A"]);
+    expect(hits[1].alignedSegments).toHaveLength(2);
+    expect(parseDaliEquivalences(DALI_TEXT).get(3)?.[0]).toMatchObject({ query: [95, 110], hit: [97, 112], hitRes: ["ALA", "VAL"] });
+  });
+
+  it("trims the raw text to the kept hits", () => {
+    const { hits } = selectTopDaliHits(DALI_TEXT, 2);
+    const trimmed = trimDaliRawPayload({ pdbId: "2QRU", chain: "A", jobUrl: "u", status: "READY", summaryText: DALI_TEXT, indexHtml: "<html>" }, hits);
+    expect(trimmed.summaryText).not.toContain("1abc");
+    expect(trimmed.summaryText).not.toContain("lots of numbers");
+    expect(trimmed.summaryText).toContain("3h04-A   240 - 250");
+    expect(trimmed.indexHtml).toBeNull();
+    expect(selectTopDaliHits(trimmed.summaryText ?? "", 25).hits[1].alignedSegments).toHaveLength(2);
+  });
+
+  it("maps candidates only through real segments", () => {
+    const segs = selectTopDaliHits(DALI_TEXT, 2).hits[1].alignedSegments ?? [];
+    const ser = { chain: "A", resNo: "102", aa: "S", label: "SER102(A)", sources: [] };
+    const his = { chain: "A", resNo: "247", aa: "H", label: "HIS247(A)", sources: [] };
+    const asp = { chain: "A", resNo: "219", aa: "D", label: "ASP219(A)", sources: [] };
+    expect(mapDaliResidue(ser, segs, new Map([["104", "SER"]]))).toEqual({ candidate: "SER102(A)", target: "SER104", identical: true });
+    expect(mapDaliResidue(his, segs, new Map())).toEqual({ candidate: "HIS247(A)", target: "residue 248", identical: null });
+    expect(mapDaliResidue(asp, segs, new Map()).target).toBeNull();
+  });
+});

@@ -41,7 +41,9 @@ export function buildResultSummaryLine(section: ToolResultSection): string {
     }
     case "dali": {
       const hits = (n.hits as Array<{ zScore: Num; pdbChain: string | null }> | undefined) ?? [];
-      parts.push(plural(hits.length, "hit"));
+      const total = typeof n.hitCount === "number" ? n.hitCount : hits.length;
+      parts.push(plural(total, "hit"));
+      if (hits.length < total) parts.push(`top ${hits.length} kept`);
       const withZ = hits.filter((h) => typeof h.zScore === "number");
       if (withZ.length) {
         const top = withZ.reduce((a, b) => ((b.zScore as number) > (a.zScore as number) ? b : a));

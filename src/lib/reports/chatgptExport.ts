@@ -169,7 +169,8 @@ function toolBlocks(section: ToolResultSection, extras: ExportExtras | null): Ex
     case "dali": {
       const hits = (n.hits as Array<Record<string, unknown>> | undefined) ?? [];
       const top = byNumber(hits, (h) => h.zScore, "desc").slice(0, MAX_ROWS);
-      add(`Status: complete. ${hits.length} hits stored (query chain ${str(n.chain)}).${source}${when}`);
+      const total = typeof n.hitCount === "number" ? n.hitCount : hits.length;
+      add(`Status: complete. ${total} hits reported (query chain ${str(n.chain)})${hits.length < total ? `; only the top ${hits.length} by Z-score are stored` : ""}.${source}${when}`);
       if (top.length) {
         row("# | PDB-chain | Z-score | RMSD (Å) | aligned residues | residues in hit | % identity | description");
         top.forEach((h, i) =>
@@ -177,10 +178,19 @@ function toolBlocks(section: ToolResultSection, extras: ExportExtras | null): Ex
             `${i + 1} | ${str(h.pdbChain)} | ${num(h.zScore)} | ${num(h.rmsd)} | ${num(h.alignLength)} | ${num(h.nRes)} | ${num(h.identityPct)} | ${clip(str(h.description), 60)}`,
           ),
         );
-        const note = capNote(top.length, hits.length);
+        const note = capNote(top.length, total);
         if (note) add(note);
       }
-      add("Residue-level Dali alignments (which hit residues line up with which residues here) are not stored, so they are not available.");
+      if (extras?.daliMaps.length) {
+        for (const m of extras.daliMaps) {
+          add(`Candidate residues structurally aligned in Dali hit ${m.target} (Z ${num(m.zScore)}; PDB numbering from Dali's structural equivalences${m.residueCheck ? "; amino acids read from RCSB coordinates" : "; hit amino acids could not be checked"}):`);
+          for (const r of m.rows) {
+            row(`${r.candidate} -> ${r.target ? `${m.target.slice(0, 4)} ${r.target}${r.identical === true ? " (same amino acid)" : r.identical === false ? " (different amino acid)" : ""}` : r.note ?? "not structurally aligned"}`);
+          }
+        }
+      } else if (extras?.candidates.length) {
+        add(`Residue-level Dali alignment: not available. ${extras.daliNote ?? ""}`.trim());
+      }
       break;
     }
     case "interpro": {

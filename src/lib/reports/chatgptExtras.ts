@@ -4,6 +4,7 @@ import { moduleRuns, results } from "@/db/schema";
 import type { ToolResultSection } from "@/lib/services/pipelineService";
 import { chainResidues, fetchRcsbPdbText, oneLetter, parsePdbAtoms } from "@/lib/structure/pdbAtoms";
 import type { Evidence } from "@/types/evidence";
+import type { DaliAlignedSegment, DaliHitNormalized } from "@/adapters/dali/types";
 
 /** Residue-level extras for the ChatGPT export, derived only from stored data + real coordinates. */
 
@@ -30,6 +31,13 @@ export interface FoldseekCandidateMap {
   rows: AlignmentRow[];
 }
 
+export interface DaliCandidateMap {
+  target: string;
+  zScore: number | null;
+  residueCheck: boolean;
+  rows: (AlignmentRow & { note?: string })[];
+}
+
 export interface InterProCheck {
   uniprot: string;
   numberingMatches: boolean;
@@ -40,6 +48,8 @@ export interface ExportExtras {
   candidates: CandidateResidue[];
   foldseekMaps: FoldseekCandidateMap[];
   foldseekNote: string | null;
+  daliMaps: DaliCandidateMap[];
+  daliNote: string | null;
   interpro: InterProCheck | null;
 }
 
@@ -85,6 +95,29 @@ export function candidateResidues(sections: ToolResultSection[], evidence: Evide
     for (const r of e.residues ?? []) add(r.chain ?? null, String(r.position), toOne(r.aminoAcid), `student evidence (${e.sourceModuleId ?? "unknown"})`);
   }
   return [...byKey.values()].slice(0, 12).map((c) => ({ ...c, label: candidateLabel(c) }));
+}
+
+/** Map one candidate through Dali segments; only when both sides' PDB numbering is gap-free in that segment. */
+export function mapDaliResidue(
+  c: CandidateResidue,
+  segments: DaliAlignedSegment[],
+  hitResidueNames: Map<string, string>,
+): AlignmentRow & { note?: string } {
+  const n = Number.parseInt(c.resNo, 10);
+  const seg = segments.find((s) => n >= s.query[0] && n <= s.query[1]);
+  if (!seg) return { candidate: c.label, target: null, identical: null, note: "not structurally aligned (outside Dali's aligned segments)" };
+  const span = (r: [number, number]) => r[1] - r[0];
+  if (span(seg.query) !== span(seg.querySeq) || span(seg.hit) !== span(seg.hitSeq) || span(seg.query) !== span(seg.hit)) {
+    return { candidate: c.label, target: null, identical: null, note: "inside an aligned segment, but residue numbering has gaps there, so the exact partner is not mapped" };
+  }
+  const hitNo = seg.hit[0] + (n - seg.query[0]);
+  const name = hitResidueNames.get(String(hitNo)) ?? (hitNo === seg.hit[0] ? seg.hitRes[0] : hitNo === seg.hit[1] ? seg.hitRes[1] : null);
+  const aa = name ? oneLetter(name) : null;
+  return {
+    candidate: c.label,
+    target: `${name ?? "residue "}${hitNo}`,
+    identical: aa && aa !== "X" && c.aa ? aa === c.aa : null,
+  };
 }
 
 /** Map query sequence index (1-based) → aligned target index (1-based) from a Foldseek alignment. */
@@ -144,8 +177,40 @@ export async function loadExportExtras(
   fetchImpl: typeof fetch = fetch,
 ): Promise<ExportExtras> {
   const candidates = candidateResidues(input.sections, input.evidence);
-  const extras: ExportExtras = { candidates, foldseekMaps: [], foldseekNote: null, interpro: null };
+  const extras: ExportExtras = { candidates, foldseekMaps: [], foldseekNote: null, daliMaps: [], daliNote: null, interpro: null };
   if (!candidates.length) return extras;
+
+  // Dali: map candidates through stored structural-equivalence segments of the top 2 non-self hits.
+  const daliSection = input.sections.find((s) => s.tool === "dali" && s.status === "succeeded");
+  const daliN = daliSection?.normalized as { chain?: string; hits?: DaliHitNormalized[] } | null | undefined;
+  if (daliN?.hits && input.pdbId) {
+    const self = input.pdbId.toLowerCase();
+    const top = [...daliN.hits]
+      .filter((h) => h.pdbChain && !h.pdbChain.toLowerCase().startsWith(self))
+      .sort((a, b) => (b.zScore ?? -Infinity) - (a.zScore ?? -Infinity))
+      .slice(0, 2);
+    if (!top.some((h) => h.alignedSegments?.length)) {
+      extras.daliNote = "This Dali result was stored before residue alignments were kept; re-run Dali to get them.";
+    } else {
+      for (const hit of top) {
+        const [id, chain = ""] = (hit.pdbChain as string).split("-");
+        const pdb = hit.alignedSegments?.length ? await fetchRcsbPdbText(id, fetchImpl) : null;
+        const names = new Map(
+          pdb ? chainResidues(parsePdbAtoms(pdb, { protein: true }), chain).map((r) => [r.resNo, r.resName]) : [],
+        );
+        extras.daliMaps.push({
+          target: `${id}_${chain}`,
+          zScore: hit.zScore,
+          residueCheck: names.size > 0,
+          rows: candidates
+            .filter((c) => !c.chain || !daliN.chain || c.chain === daliN.chain)
+            .map((c) => mapDaliResidue(c, hit.alignedSegments ?? [], names)),
+        });
+      }
+    }
+  } else if (daliSection) {
+    extras.daliNote = "No Dali hits stored.";
+  }
 
   // InterPro: does UniProt numbering match the PDB numbering at the candidate positions?
   const interproRaw = await loadRaw(db, input.projectId, input.sections.find((s) => s.tool === "interpro" && s.status === "succeeded"));

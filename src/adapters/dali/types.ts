@@ -21,6 +21,20 @@ export interface DaliRawPayload {
   indexHtml: string | null;
 }
 
+/**
+ * One structurally aligned segment from Dali's "# Structural equivalences"
+ * block. `query`/`hit` are PDB residue numbers; `querySeq`/`hitSeq` are
+ * Dali's sequential numbering; `*Res` are the end-point residue names.
+ */
+export interface DaliAlignedSegment {
+  query: [number, number];
+  hit: [number, number];
+  querySeq: [number, number];
+  hitSeq: [number, number];
+  queryRes: [string, string];
+  hitRes: [string, string];
+}
+
 export interface DaliHitNormalized {
   rank: number | null;
   pdbChain: string | null;
@@ -30,6 +44,8 @@ export interface DaliHitNormalized {
   nRes: number | null;
   identityPct: number | null;
   description: string | null;
+  /** Kept only for the top hits; absent when Dali gave no equivalences. */
+  alignedSegments?: DaliAlignedSegment[];
 }
 
 export interface DaliNormalizedSearch {
@@ -37,8 +53,12 @@ export interface DaliNormalizedSearch {
   chain: string;
   jobUrl: string;
   status: string;
+  /** Total hits Dali reported. */
   hitCount: number;
+  /** Only the best hits (by Z-score) are stored; see `keptTop`. */
   hits: DaliHitNormalized[];
+  /** How many top hits were kept (absent on older, untrimmed results). */
+  keptTop?: number;
   provenance: Provenance;
 }
 

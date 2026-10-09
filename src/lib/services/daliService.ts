@@ -3,6 +3,7 @@ import type { AppDatabase } from "@/db/client";
 import { moduleRuns, results, scientificJobs } from "@/db/schema";
 import { createId, nowIso } from "@/lib/ids";
 import { serializeRawForStorage } from "@/lib/db/storageLimits";
+import { trimDaliRawPayload } from "@/adapters/dali/normalize";
 import { getProjectById } from "@/lib/db/queries/projects";
 import { getModuleRun } from "@/lib/db/queries/moduleRuns";
 import { getStructureByProjectId } from "@/lib/db/queries/structures";
@@ -81,7 +82,8 @@ async function persistSuccess(
       id: rawResultId,
       moduleRunId: options.moduleRunId,
       type: "raw",
-      rawDataJson: serializeRawForStorage(options.raw, {
+      // Keep only the top hits' summary + equivalence lines (full output is multi-MB).
+      rawDataJson: serializeRawForStorage(trimDaliRawPayload(options.raw, options.normalized.hits), {
         tool: "Dali",
         source: provenance.source,
       }),
