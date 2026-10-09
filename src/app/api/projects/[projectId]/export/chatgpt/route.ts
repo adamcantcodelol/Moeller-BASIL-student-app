@@ -5,6 +5,7 @@ import { mapNote } from "@/lib/db/mappers";
 import { handleServiceError } from "@/lib/http";
 import { buildChatGptExport } from "@/lib/reports/chatgptExport";
 import { renderExportPdf } from "@/lib/reports/chatgptPdf";
+import { loadExportExtras } from "@/lib/reports/chatgptExtras";
 import { listEvidenceForProject } from "@/lib/services/evidenceService";
 import { getHypothesisForProject } from "@/lib/services/hypothesisService";
 import { getProjectResultsSections } from "@/lib/services/pipelineService";
@@ -27,6 +28,11 @@ export async function GET(
       getHypothesisForProject(db, projectId),
       db.select().from(notes).where(eq(notes.projectId, projectId)),
     ]);
+    const extras = await loadExportExtras(db, {
+      pdbId: overview.structure?.pdbId ?? null,
+      sections,
+      evidence,
+    }).catch(() => null);
     const blocks = buildChatGptExport({
       project: overview.project,
       structure: overview.structure,
@@ -36,6 +42,7 @@ export async function GET(
       versions: hyp.versions,
       notes: noteRows.map(mapNote).sort((a, b) => a.createdAt.localeCompare(b.createdAt)),
       exportedAt: new Date().toISOString(),
+      extras,
     });
     const bytes = await renderExportPdf(blocks, `ShannonGPT export - ${overview.project.name}`);
     const slug = (overview.structure?.pdbId ?? overview.project.name)

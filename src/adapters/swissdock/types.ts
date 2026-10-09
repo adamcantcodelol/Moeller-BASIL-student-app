@@ -32,6 +32,8 @@ export interface SwissDockRawPayload {
     | "error";
   /** Raw checkstatus / retrieve text when available. */
   resultsText: string | null;
+  /** Atom lines of the best (first) Vina pose, for real contact measurement. */
+  bestPosePdbqt?: string | null;
   /** Box actually sent to SwissDock (set on submit). */
   boxCenter?: string;
   boxSize?: string;
@@ -61,7 +63,25 @@ export interface SwissDockBoxChoice {
   label: string;
 }
 
+/** Protein residues near the best pose, measured from real coordinates. */
+export interface SwissDockContacts {
+  cutoff: number;
+  /** All residues with a heavy atom within `measuredWithin` Å of the pose (closest first). */
+  measuredWithin: number;
+  residues: {
+    chain: string;
+    resNo: string;
+    resName: string;
+    minDistance: number;
+    closestAtom: string;
+  }[];
+  method: string;
+}
+
 export interface SwissDockNormalizedSearch {
+  contacts?: SwissDockContacts | null;
+  /** Why contacts are missing, when they are. */
+  contactsNote?: string | null;
   ligand?: SwissDockLigandChoice | null;
   box?: SwissDockBoxChoice | null;
   sessionNumber: string;

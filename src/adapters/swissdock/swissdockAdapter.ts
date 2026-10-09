@@ -1,3 +1,4 @@
+import { firstPdbqtModel } from "@/lib/structure/pdbAtoms";
 import type { ScientificAdapter } from "@/adapters/scientificAdapter";
 import { DEFAULT_ADAPTER_TIMEOUT_MS } from "@/adapters/fetch";
 import { normalizeSwissDockPayload } from "@/adapters/swissdock/normalize";
@@ -369,7 +370,7 @@ export class SwissDockSearchAdapter
     }
 
     if (state === "finished") {
-      const resultsText = await this.retrieveVinaResults(sessionNumber);
+      const { remarks: resultsText, bestPose } = await this.retrieveVinaResults(sessionNumber);
       this.setProvenance(
         {
           sessionNumber,
@@ -388,6 +389,7 @@ export class SwissDockSearchAdapter
         statusText,
         phase: "ready",
         resultsText,
+        bestPosePdbqt: bestPose,
       };
     }
 
@@ -419,7 +421,9 @@ export class SwissDockSearchAdapter
   }
 
   /** Download results.zip and keep only the real Vina score lines. */
-  private async retrieveVinaResults(sessionNumber: string): Promise<string> {
+  private async retrieveVinaResults(
+    sessionNumber: string,
+  ): Promise<{ remarks: string; bestPose: string | null }> {
     const url = `${SWISSDOCK_API_BASE}/retrievesession?sessionNumber=${encodeURIComponent(sessionNumber)}`;
     const res = await this.fetchWithTimeout(url, undefined, "retrievesession");
     if (!res.ok) {
@@ -448,7 +452,7 @@ export class SwissDockSearchAdapter
         "SwissDock finished but its results had no Vina poses. No poses were invented.",
       );
     }
-    return lines.join("\n");
+    return { remarks: lines.join("\n"), bestPose: entry ? firstPdbqtModel(entry.text) : null };
   }
 
   normalize(output: SwissDockRawPayload): SwissDockNormalizedSearch {

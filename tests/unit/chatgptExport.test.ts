@@ -9,6 +9,8 @@ import {
 } from "@/lib/reports/chatgptExport";
 import { renderExportPdf, toWinAnsi } from "@/lib/reports/chatgptPdf";
 import type { ToolResultSection } from "@/lib/services/pipelineService";
+import { alignmentIndexMap, candidateResidues } from "@/lib/reports/chatgptExtras";
+import { firstPdbqtModel, parsePdbqtAtoms, parsePdbAtoms, residueDistances } from "@/lib/structure/pdbAtoms";
 
 function section(partial: Partial<ToolResultSection> & Pick<ToolResultSection, "tool" | "status">): ToolResultSection {
   return {
@@ -94,3 +96,50 @@ describe("buildChatGptExport", () => {
     expect(toWinAnsi("−3.9 Å → x")).toBe("-3.9 Å ? x");
   });
 });
+
+describe("residue extras", () => {
+  it("maps aligned indices and gaps", () => {
+    const m = alignmentIndexMap("AB-CD", "A-XCD", 10, 20);
+    expect(m.get(10)).toBe(20);
+    expect(m.get(11)).toBeNull();
+    expect(m.get(12)).toBe(22);
+    expect(m.get(13)).toBe(23);
+  });
+
+  it("measures real closest distances from coordinates", () => {
+    const pdb = [
+      "ATOM      1  OG  SER A 102       0.000   0.000   0.000  1.00 10.00           O",
+      "ATOM      2  CA  HIS A 247      10.000   0.000   0.000  1.00 10.00           C",
+    ].join("\n");
+    const pdbqt = [
+      "MODEL 1",
+      "ATOM      1  C1  UNL     1       3.000   0.000   0.000  0.00  0.00     0.000 C ",
+      "ATOM      2  H1  UNL     1       0.500   0.000   0.000  0.00  0.00     0.000 HD",
+      "ENDMDL",
+      "MODEL 2",
+      "ATOM      1  C1  UNL     1      99.000   0.000   0.000  0.00  0.00     0.000 C ",
+    ].join("\n");
+    const pose = firstPdbqtModel(pdbqt)!;
+    const d = residueDistances(parsePdbAtoms(pdb, { protein: true }), parsePdbqtAtoms(pose), 8);
+    expect(d).toEqual([
+      { chain: "A", resNo: "102", resName: "SER", minDistance: 3, closestAtom: "OG" },
+      { chain: "A", resNo: "247", resName: "HIS", minDistance: 7, closestAtom: "CA" },
+    ]);
+  });
+
+  it("flags candidate contacts, and says plainly when contacts are missing", () => {
+    const candidates = candidateResidues(input.sections, []);
+    expect(candidates.map((c) => c.label)).toEqual(["SER102(A)"]);
+    const withContacts = structuredClone(input);
+    const sd = withContacts.sections[2].normalized as Record<string, unknown>;
+    sd.contacts = {
+      cutoff: 4, measuredWithin: 8, method: "test",
+      residues: [{ chain: "A", resNo: "102", resName: "SER", minDistance: 3.1, closestAtom: "OG" }],
+    };
+    const text = exportToText(buildChatGptExport({ ...withContacts, extras: { candidates, foldseekMaps: [], foldseekNote: null, interpro: null } }));
+    expect(text).toContain("SER102(A) 3.10 Å");
+    expect(text).toContain("SER102(A): IN CONTACT - closest atom OG at 3.10 Å");
+    expect(exportToText(buildChatGptExport(input))).toContain("Best-pose contacts: not available for this run.");
+  });
+});
+

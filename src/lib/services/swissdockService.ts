@@ -41,6 +41,12 @@ function withChoice(
 }
 import { validatePdbId } from "@/lib/validation/pdbId";
 import {
+  fetchRcsbPdbText,
+  parsePdbAtoms,
+  parsePdbqtAtoms,
+  residueDistances,
+} from "@/lib/structure/pdbAtoms";
+import {
   createScientificJob,
   getScientificJob,
   listJobsForModuleRun,
@@ -69,6 +75,39 @@ function mapError(error: unknown): never {
     throw new ServiceError(error.message, status);
   }
   throw error;
+}
+
+export const CONTACT_CUTOFF_A = 4;
+const CONTACT_MEASURED_WITHIN_A = 8;
+
+/**
+ * Measure real protein residues near the best Vina pose using the RCSB
+ * coordinates of the docked structure. Fail-soft: never invents contacts.
+ */
+export async function withDockingContacts(
+  normalized: SwissDockNormalizedSearch,
+  raw: SwissDockRawPayload,
+  fetchImpl: typeof fetch = fetch,
+): Promise<SwissDockNormalizedSearch> {
+  if (!raw.bestPosePdbqt) {
+    return { ...normalized, contacts: null, contactsNote: "SwissDock results did not include pose coordinates, so contacts were not measured." };
+  }
+  const ligand = parsePdbqtAtoms(raw.bestPosePdbqt);
+  const pdbText = await fetchRcsbPdbText(raw.pdbId, fetchImpl);
+  const protein = pdbText ? parsePdbAtoms(pdbText, { protein: true }) : [];
+  if (!ligand.length || !protein.length) {
+    return { ...normalized, contacts: null, contactsNote: "Could not load coordinates to measure contacts for this run." };
+  }
+  return {
+    ...normalized,
+    contacts: {
+      cutoff: CONTACT_CUTOFF_A,
+      measuredWithin: CONTACT_MEASURED_WITHIN_A,
+      residues: residueDistances(protein, ligand, CONTACT_MEASURED_WITHIN_A),
+      method: `Closest heavy-atom distance between the best Vina pose (MODEL 1 of vina_dock.pdbqt) and ${raw.pdbId} protein atoms from RCSB (first model, altloc A).`,
+    },
+    contactsNote: null,
+  };
 }
 
 async function persistSuccess(
@@ -213,7 +252,7 @@ export async function submitSwissDock(
         normalized: null as SwissDockNormalizedSearch | null,
       };
     }
-    const normalized = withChoice(adapter.normalize(raw), jobParams);
+    const normalized = await withDockingContacts(withChoice(adapter.normalize(raw), jobParams), raw);
     const persisted = await persistSuccess(db, {
       projectIsDemo: project.isDemo,
       moduleRunId: run.id,
@@ -303,7 +342,7 @@ export async function pollSwissDockJob(
         normalized: null as SwissDockNormalizedSearch | null,
       };
     }
-    const normalized = withChoice(adapter.normalize(raw), params);
+    const normalized = await withDockingContacts(withChoice(adapter.normalize(raw), params), raw);
     const run = await getModuleRun(db, projectId, SWISSDOCK_MODULE_ID);
     if (!run) throw new ServiceError("SwissDock module run is missing.", 500);
     const persisted = await persistSuccess(db, {
