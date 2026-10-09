@@ -115,7 +115,7 @@ export function mapDaliResidue(
   const aa = name ? oneLetter(name) : null;
   return {
     candidate: c.label,
-    target: `${name ?? "residue "}${hitNo}`,
+    target: `${name ?? "residue "}${hitNo}${name && aa === "X" ? " (non-standard/modified residue in the PDB file)" : ""}`,
     identical: aa && aa !== "X" && c.aa ? aa === c.aa : null,
   };
 }
@@ -196,7 +196,7 @@ export async function loadExportExtras(
         const [id, chain = ""] = (hit.pdbChain as string).split("-");
         const pdb = hit.alignedSegments?.length ? await fetchRcsbPdbText(id, fetchImpl) : null;
         const names = new Map(
-          pdb ? chainResidues(parsePdbAtoms(pdb, { protein: true }), chain).map((r) => [r.resNo, r.resName]) : [],
+          pdb ? chainResidues(parsePdbAtoms(pdb), chain).map((r) => [r.resNo, r.resName]) : [],
         );
         extras.daliMaps.push({
           target: `${id}_${chain}`,
